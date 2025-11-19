@@ -1,7 +1,6 @@
 # cse6332 project_6
 CSE 6332 Cloud Project
 
-#########################
 Use:
 	docker compose stop
 		&
@@ -9,7 +8,6 @@ Use:
 	if you run: docker compose down -v
        you will erase most if not all of your data. 
 	   Only do this in preparation to clean the project for removal
-#########################
 
 Quick Start
 This is updated over what is in the zip file:
