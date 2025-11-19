@@ -1,14 +1,16 @@
-# project_6
+# cse6332 project_6
 CSE 6332 Cloud Project
 
-Use: docker compose stop & docker compose start
-
-If you run: docker compose down -v you will erase most if not all of your data.
-
-Only do this in preparation to clean the project for removal
+Use:
+	docker compose stop
+		&
+	docker compose start
+	if you run: docker compose down -v
+       you will erase most if not all of your data. 
+	   Only do this in preparation to clean the project for removal
 
 Quick Start
-This is included in the zip file:
+This is updated over what is in the zip file:
 
 1. Unzip the file.  It will create a sub-directory called project_6   
 
