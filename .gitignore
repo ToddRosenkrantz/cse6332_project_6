@@ -1,6 +1,5 @@
 # Local helper files/scripts
-make_zip.sh
-.zipignore
+
 
 # OS cruft
 .DS_Store
@@ -15,4 +14,4 @@ __pycache__/
 *.log
 
 # Explicitly dis-allow the main project zip
-cse6332_project.zip
+project_6.zip

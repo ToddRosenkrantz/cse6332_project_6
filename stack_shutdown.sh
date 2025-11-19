@@ -46,6 +46,6 @@ docker compose stop spark-consumer-parquet  # Stop the Spark parquet consumer co
 
 # Optionally, bring down the Docker containers
 echo "Bringing down Docker containers..."
-docker compose down
+docker compose stop
 
 echo "Shutdown completed: Producers and consumers stopped."

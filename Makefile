@@ -3,7 +3,7 @@
 # ----------------------------
 
 run:
-	docker compose up -d
+	docker compose start
 
 stop:
 	@echo "🔐 Running clean shutdown of producers..."
@@ -26,6 +26,9 @@ install:
 
 	@echo "> Installing MinIO client (mc)..."
 	[ -f ./mc ] || (wget -q https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc)
+
+	@echo "> Downloading and installing some Docker images which are no longer freely available..."
+	./download_images.sh
 
 	@echo "> Starting Docker containers..."
 	docker compose up -d
