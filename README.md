@@ -1,16 +1,22 @@
-# cse6332_project
+# project_6
 CSE 6332 Cloud Project
+
+Use: docker compose stop & docker compose start
+
+If you run: docker compose down -v you will erase most if not all of your data.
+
+Only do this in preparation to clean the project for removal
 
 Quick Start
 This is included in the zip file:
 
-1. Unzip the file.  It will create a sub-directory called cse6332_project   
+1. Unzip the file.  It will create a sub-directory called project_6   
 
-	unzip cse6332_project.zip -d cse6332_project
+	unzip project_6.zip -d project_6
 
 2. Change directories into that new sub-directory
 
-	cd cse6332_project
+	cd project_6
 
 3. Run 'make install', this will gather the various Python modules, project specific jar files and utilities.
 
@@ -42,7 +48,7 @@ Some things to exammine:
 Prometheus:
 	http://localhost:9090/targets
 	all targets should be green if all the producers are running. Only the producers not running
-	sould be red if not.
+	sould be red if not. the "check_services.sh" script does a similar check
 
 Minio:
 	http://localhost:9001

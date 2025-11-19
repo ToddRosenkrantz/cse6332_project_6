@@ -1,0 +1,43 @@
+├── Makefile                            Install and management commands
+├── QUICK_START.txt                     Quick start instructions
+├── README.md                           Project overview and documentation
+├── check_services.sh                   Script to check status of services
+├── create_kafka_topic.sh               Script to create Kafka topics
+├── create_minio_bucket.sh              Script to create MinIO buckets
+├── docker-compose.yml                  Docker Compose configuration
+├── download_images.sh                  Script to download Docker images
+├── download_spark_kafka_jars.sh        Script to download Spark Kafka JAR files
+├── extract_grafana.sh                  Script to extract Grafana database (not in use)
+├── grafana_export                      Directory with Grafana DB, dashboards, and datasources
+│   ├── grafana.db                      Grafana database
+│   ├── plugins                         Grafana plugins
+│   └── provisioning                    Provisioning configuration
+│       ├── dashboards                  Grafana dashboards
+│       └── datasources                 Grafana datasources
+├── jobs                                Spark job scripts
+│   ├── kafka_consumer.py               Spark Kafka consumer script
+│   ├── kafka_json_consumer.py          Spark Kafka JSON consumer script
+│   └── kafka_parquet_consumer.py       Spark Kafka Parquet consumer script
+├── kafka_producer_dual_stack.docx      Documentation for dual stack Kafka producer
+├── kafka_producer_dual_stack.txt       Text version of dual stack Kafka producer documentation
+├── kafka_producer_tuning.docx          Documentation for Kafka producer tuning
+├── kafka_producer_tuning.txt           Text version of Kafka producer tuning documentation
+├── lambda_ramp.sh                      Script to ramp Poison Lambda values
+├── make_zip.sh                         Script to create project zip file (not in use)
+├── manage_producers.sh                 Script to manage Kafka producers
+├── manage_producers_ckafka.sh          Script to manage Confluent Kafka producers
+├── pipeline_monitor.sh                 Script to check the data pipeline
+├── poisson_kafka_producer.py           Kafka producer script for Poison Lambda data
+├── producer_confluent_kafka.py         Kafka producer script using Confluent Kafka library
+├── prometheus.yml                      Prometheus configuration file
+├── requirements.txt                    Python dependencies
+├── stack_shutdown.sh                   Script to CLEANLY shut down the Docker stack
+├── volumes                             Directory for Docker volumes
+│   ├── jars                            Directory for JAR files
+│   ├── jmx                             Directory for JMX configuration
+│   │   ├── kafka-jmx-config.yml        JMX config for Kafka
+│   │   └── zookeeper-jmx-config.yml    JMX config for Zookeeper
+│   ├── prometheus                      Directory for Prometheus data
+│   └── spark-metrics                   Directory for Spark metrics
+│       └── metrics.properties          Spark metrics configuration
+└── zoo.cfg                             Zookeeper configuration file

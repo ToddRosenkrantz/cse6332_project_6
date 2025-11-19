@@ -12,6 +12,7 @@ build/
 .venv/
 __pycache__/
 *.log
+retired/
 
 # Explicitly dis-allow the main project zip
 project_6.zip

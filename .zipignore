@@ -2,4 +2,5 @@
 .gitignore
 .gitattributes
 .zipignore
+retired/*
 project_6.zip
