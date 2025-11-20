@@ -1,6 +1,31 @@
 # ----------------------------
 # Makefile for Kafka/Spark stack
 # ----------------------------
+# Detect OS and architecture
+OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH := $(shell uname -m)
+
+# Normalize architecture names
+ifeq ($(ARCH),x86_64)
+    ARCH := amd64
+endif
+ifeq ($(ARCH),aarch64)
+    ARCH := arm64
+endif
+
+# Base URL for MinIO client
+MC_BASE_URL := https://dl.min.io/client/mc/release
+
+# Compute download URL
+MC_URL := $(MC_BASE_URL)/$(OS)-$(ARCH)/mc
+
+# Install path
+BIN_DIR := .
+MC_BIN := $(BIN_DIR)/mc
+
+.PHONY: install-mc
+install-mc:
+
 
 run:
 	docker compose start
@@ -24,11 +49,14 @@ install:
 	@echo "> Downloading required Spark/Kafka JARs..."
 	./download_spark_kafka_jars.sh || true
 
-	@echo "> Installing MinIO client (mc)..."
-	[ -f ./mc ] || (wget -q https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc)
+	@echo "Detected OS: $(OS), ARCH: $(ARCH)"
+	@echo "Downloading mc from $(MC_URL)"
+	curl -fsSL $(MC_URL) -o $(MC_BIN)
+	chmod +x $(MC_BIN)
+	@echo "✅ Installed mc at $(MC_BIN)"
 
-	@echo "> Downloading and installing some Docker images which are no longer freely available..."
-	./download_images.sh
+#	@echo "> Installing MinIO client (mc)..."
+#	[ -f ./mc ] || (wget -q https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc)
 
 	@echo "> Starting Docker containers..."
 	docker compose up -d

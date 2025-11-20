@@ -1,6 +1,6 @@
 services:
   zookeeper:
-    image: bitnami/zookeeper:3.9
+    image: bitnamilegacy/zookeeper:3.9
     container_name: zookeeper
     restart: unless-stopped
     #user: "${UID}:${GID}"
@@ -43,7 +43,7 @@ services:
       - sparknet
 
   kafka:
-    image: bitnami/kafka:3.6
+    image: bitnamilegacy/kafka:3.6
     container_name: kafka
     restart: unless-stopped
     #user: "${UID}:${GID}"
@@ -106,7 +106,7 @@ services:
       retries: 3
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     #user: "${UID}:${GID}"
@@ -177,7 +177,7 @@ services:
       retries: 3
 
   spark-master:
-    image: bitnami/spark:3.5.5
+    image: bitnamilegacy/spark:3.5.5
     container_name: spark-master
     restart: unless-stopped
     environment:
@@ -195,7 +195,7 @@ services:
       - ./volumes/spark-metrics/metrics.properties:/opt/bitnami/spark/conf/metrics.properties
 
   spark-worker:
-    image: bitnami/spark:3.5.5
+    image: bitnamilegacy/spark:3.5.5
     container_name: spark-worker
     restart: unless-stopped
     depends_on:
@@ -215,7 +215,7 @@ services:
       - ./volumes/spark-metrics/metrics.properties:/opt/bitnami/spark/conf/metrics.properties
 
   spark-consumer-json:
-    image: bitnami/spark:3.5.5
+    image: bitnamilegacy/spark:3.5.5
     container_name: spark-consumer-json
     cpus: 2.0
     depends_on:
@@ -241,7 +241,7 @@ services:
       /opt/bitnami/spark/jobs/kafka_json_consumer.py
 
   spark-consumer-parquet:
-    image: bitnami/spark:3.5.5
+    image: bitnamilegacy/spark:3.5.5
     container_name: spark-consumer-parquet
     cpus: 2.0
     depends_on:

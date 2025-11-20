@@ -3,8 +3,11 @@ CSE 6332 Cloud Project
 
 Use:
 	docker compose stop
+
 		&
+
 	docker compose start
+	
 	if you run: docker compose down -v
        you will erase most if not all of your data. 
 	   Only do this in preparation to clean the project for removal
@@ -46,7 +49,7 @@ This is updated over what is in the zip file:
 You will always need to manually run the manage_producers*.sh scripts.
 
 
-Some things to exammine:
+Some things to examine:
 Prometheus:
 	http://localhost:9090/targets
 	all targets should be green if all the producers are running. Only the producers not running
