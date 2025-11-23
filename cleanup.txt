@@ -1,0 +1,14 @@
+To completely remove this project.
+Starting inside your project directory, perform the following steps
+docker compose down -v
+
+!!!This will REMOVE ALL UNUSED CONTAINERS!!!
+docker container prune
+!!!This will REMOVE !!ALL!! images not currently in use!!! 
+docker image prune -a
+
+cd ..
+rm -rf project_6
+
+Finally,
+rm project_6.zip

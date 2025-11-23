@@ -23,6 +23,7 @@ MC_URL := $(MC_BASE_URL)/$(OS)-$(ARCH)/mc
 BIN_DIR := .
 MC_BIN := $(BIN_DIR)/mc
 
+.PHONY: graphana_restore
 .PHONY: install-mc
 install-mc:
 
@@ -55,24 +56,23 @@ install:
 	chmod +x $(MC_BIN)
 	@echo "✅ Installed mc at $(MC_BIN)"
 
-#	@echo "> Installing MinIO client (mc)..."
-#	[ -f ./mc ] || (wget -q https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc)
-
 	@echo "> Starting Docker containers..."
 	docker compose up -d
 
-	@echo "> Running first-run setup scripts..."
-	./create_kafka_topic.sh
-	./create_minio_bucket.sh
-	@echo "> Running Grafana setup..."
+	@echo "> Running Zookeeper setup..."
 	docker compose stop zookeeper
 	docker cp ./zoo.cfg zookeeper:/opt/bitnami/zookeeper/conf/zoo.cfg
 	docker compose start zookeeper
-	docker compose stop grafana
-	docker cp ./grafana_export/grafana.db grafana:/var/lib/grafana/grafana.db
-	docker cp ./grafana_export/provisioning/dashboards grafana:/etc/grafana/provisioning/dashboards
-	docker cp ./grafana_export/provisioning/datasources grafana:/etc/grafana/provisioning/datasources
-	docker cp ./grafana_export/plugins grafana:/var/lib/grafana/plugins
-	docker start grafana
+
+	@echo "> Running Grafana setup..."
+	@$(MAKE) graphana_restore
+
+graphana_restore:
+	docker compose exec grafana kill -TERM 1
+	docker cp grafana.db grafana:/var/lib/grafana/grafana.db
+	docker compose run --rm -u root --entrypoint /bin/bash grafana -c "chown grafana:root /var/lib/grafana/grafana.db"
+#	docker exec -u root grafana /bin/bash -c "chown 472:0 /var/lib/grafana/grafana.db"
+#	docker exec -u root grafana /bin/bash -c "chmod 640 /var/lib/grafana/grafana.db"
+	docker compose restart grafana
+	sleep 5
 	docker exec grafana grafana cli admin reset-admin-password admin
-	@echo "> Setup complete. Access Grafana at http://localhost:3000 (admin/admin)."

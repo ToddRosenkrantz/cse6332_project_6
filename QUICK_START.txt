@@ -1,16 +1,16 @@
 Unzip the file using the command below; this will create a sub-directory called cse6332_project.
 
-	unzip cse6332_project.zip -d cse6332_project
+	unzip project_6.zip -d project_6
 
 Change directories into that new sub-directory
 
-	cd cse6332_project
+	cd project_6
 
 Run 'make install', this will gather the various Python modules, project specific jar files and utilities.
 
 	make install
 
-If you had no error, you should now be able to start the message producers to begin 'publishing' messages
+If you had no error(s), you should now be able to start the message producers to begin 'publishing' messages
 (you should stop the producers by using the stop parameter when shutting down your testing)
 
 	./manage_producers.sh start
@@ -19,4 +19,5 @@ If you had no error, you should now be able to start the message producers to be
 
 Finally, this script should return without errors and give an indication of the entire process functioning.
 (currently step 5 produces shows nothing due to where checkpoiint files are stored now)
+
 	./pipeline_monitor.sh

@@ -106,13 +106,14 @@ services:
       retries: 3
 
   grafana:
+#    image: grafana/grafana:12.2.1
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     #user: "${UID}:${GID}"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-clock-panel,grafana-simple-json-datasource
+      - GF_PLUGINS_PREINSTALL=grafana-piechart-panel,grafana-clock-panel,grafana-simple-json-datasource
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - TZ=${TZ}

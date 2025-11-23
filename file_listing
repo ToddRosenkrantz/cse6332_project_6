@@ -5,15 +5,8 @@
 ├── create_kafka_topic.sh               Script to create Kafka topics
 ├── create_minio_bucket.sh              Script to create MinIO buckets
 ├── docker-compose.yml                  Docker Compose configuration
-├── download_images.sh                  Script to download Docker images
 ├── download_spark_kafka_jars.sh        Script to download Spark Kafka JAR files
-├── extract_grafana.sh                  Script to extract Grafana database (not in use)
-├── grafana_export                      Directory with Grafana DB, dashboards, and datasources
-│   ├── grafana.db                      Grafana database
-│   ├── plugins                         Grafana plugins
-│   └── provisioning                    Provisioning configuration
-│       ├── dashboards                  Grafana dashboards
-│       └── datasources                 Grafana datasources
+│   grafina.db				A Grafana database with some dashboards
 ├── jobs                                Spark job scripts
 │   ├── kafka_consumer.py               Spark Kafka consumer script
 │   ├── kafka_json_consumer.py          Spark Kafka JSON consumer script
