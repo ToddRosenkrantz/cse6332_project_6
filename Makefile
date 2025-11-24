@@ -21,11 +21,16 @@ MC_URL := $(MC_BASE_URL)/$(OS)-$(ARCH)/mc
 
 # Install path
 BIN_DIR := .
-MC_BIN := $(BIN_DIR)/mc
+MC_BIN := $(BIN_DIR)/minio_cli
 
 .PHONY: graphana_restore
-.PHONY: install-mc
-install-mc:
+.PHONY: install-minio_cli
+install-minio_cli:
+	@echo "Detected OS: $(OS), ARCH: $(ARCH)"
+	@echo "Downloading minio_cli from $(MC_URL)"
+	curl -fsSL $(MC_URL) -o $(MC_BIN)
+	chmod +x $(MC_BIN)
+	@echo "✅ Installed minio_cli at $(MC_BIN)"
 
 
 run:
@@ -51,10 +56,10 @@ install:
 	./download_spark_kafka_jars.sh || true
 
 	@echo "Detected OS: $(OS), ARCH: $(ARCH)"
-	@echo "Downloading mc from $(MC_URL)"
+	@echo "Downloading minio_cli from $(MC_URL)"
 	curl -fsSL $(MC_URL) -o $(MC_BIN)
 	chmod +x $(MC_BIN)
-	@echo "✅ Installed mc at $(MC_BIN)"
+	@echo "✅ Installed minio_cli at $(MC_BIN)"
 
 	@echo "> Starting Docker containers..."
 	docker compose up -d
@@ -63,6 +68,10 @@ install:
 	docker compose stop zookeeper
 	docker cp ./zoo.cfg zookeeper:/opt/bitnami/zookeeper/conf/zoo.cfg
 	docker compose start zookeeper
+
+	@echo "> Running first-run setup scripts..."
+	./create_kafka_topic.sh
+	./create_minio_bucket.sh
 
 	@echo "> Running Grafana setup..."
 	@$(MAKE) graphana_restore
