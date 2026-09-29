@@ -1,0 +1,26 @@
+# Local settings / secrets
+.env
+volumes/seaweedfs/s3.json
+
+# Downloaded dependencies (python setup.py install)
+volumes/jars/*.jar
+volumes/jmx/*.jar
+*.part
+
+# Runtime state
+results/
+run/
+logs/
+lambda_*.txt
+producers_*.txt
+
+# Python
+.venv*/
+__pycache__/
+*.pyc
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+retired/

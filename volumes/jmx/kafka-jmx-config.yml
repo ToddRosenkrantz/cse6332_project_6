@@ -1,0 +1,140 @@
+startDelaySeconds: 0
+ssl: false
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Broker throughput per topic and in total (meters exported as counters).
+  # Listed first: the first matching rule wins.
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(MessagesInPerSec|BytesInPerSec|BytesOutPerSec|TotalProduceRequestsPerSec|TotalFetchRequestsPerSec), topic=(.+)><>Count'
+    name: kafka_server_brokertopicmetrics_$1_total
+    type: COUNTER
+    labels:
+      topic: "$2"
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(MessagesInPerSec|BytesInPerSec|BytesOutPerSec|TotalProduceRequestsPerSec|TotalFetchRequestsPerSec)><>Count'
+    name: kafka_server_brokertopicmetrics_$1_total
+    type: COUNTER
+
+  - pattern: 'kafka.server<type=(.+), name=(.+)><>Value'
+    name: kafka_server_$1_$2
+    type: GAUGE
+    help: "Kafka server metric $1 $2"
+
+  - pattern: 'kafka.server<type=(.+), name=(.+), topic=(.+)><>Value'
+    name: kafka_server_$1_$2
+    labels:
+      topic: "$3"
+    type: GAUGE
+    help: "Kafka server metric $1 $2 per topic"
+
+  - pattern: 'kafka.server<type=(.+), name=(.+), client-id=(.+)><>Value'
+    name: kafka_server_$1_$2
+    labels:
+      client_id: "$3"
+    type: GAUGE
+    help: "Kafka server metric $1 $2 per client ID"
+
+  - pattern: 'kafka.network<type=(.+), name=(.+)><>Value'
+    name: kafka_network_$1_$2
+    type: GAUGE
+    help: "Kafka network metric $1 $2"
+
+  - pattern: 'kafka.network<type=(.+), name=(.+), networkProcessor=(.+)><>Value'
+    name: kafka_network_$1_$2
+    labels:
+      network_processor: "$3"
+    type: GAUGE
+    help: "Kafka network metric $1 $2 per processor"
+
+  - pattern: 'kafka.request<type=RequestMetrics, name=(.+), request=(.+)><>Value'
+    name: kafka_request_$1
+    labels:
+      request: "$2"
+    type: GAUGE
+    help: "Kafka request metric $1 per request type"
+
+  - pattern: 'kafka.controller<type=(.+), name=(.+)><>Value'
+    name: kafka_controller_$1_$2
+    type: GAUGE
+    help: "Kafka controller metric $1 $2"
+
+  - pattern: 'kafka.log<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value'
+    name: kafka_log_$1_$2
+    labels:
+      topic: "$3"
+      partition: "$4"
+    type: GAUGE
+    help: "Kafka log metric $1 $2 per topic/partition"
+
+  - pattern: 'kafka.log<type=(.+), name=(.+), topic=(.+)><>Value'
+    name: kafka_log_$1_$2
+    labels:
+      topic: "$3"
+    type: GAUGE
+    help: "Kafka log metric $1 $2 per topic"
+
+  - pattern: 'kafka.cluster<type=(.+), name=(.+)><>Value'
+    name: kafka_cluster_$1_$2
+    type: GAUGE
+    help: "Kafka cluster metric $1 $2"
+
+  - pattern: 'kafka.coordinator<type=(.+), name=(.+)><>Value'
+    name: kafka_coordinator_$1_$2
+    type: GAUGE
+    help: "Kafka coordinator metric $1 $2"
+
+  - pattern: 'kafka.replica<type=(.+), name=(.+), topic=(.+), partition=(.+)><>Value'
+    name: kafka_replica_$1_$2
+    labels:
+      topic: "$3"
+      partition: "$4"
+    type: GAUGE
+    help: "Kafka replica metric $1 $2 per topic/partition"
+
+  - pattern: 'kafka.server<type=FetcherLagMetrics, client-id=(.+), topic=(.+), partition=(.+), name=(.+)><>Value'
+    name: kafka_fetcher_lag_metrics_$4
+    labels:
+      client_id: "$1"
+      topic: "$2"
+      partition: "$3"
+    type: GAUGE
+    help: "Kafka fetcher lag metric $4 per topic/partition/client"
+
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(.+), topic=(.+)><>Value'
+    name: kafka_broker_topic_metrics_$1
+    labels:
+      topic: "$2"
+    type: GAUGE
+    help: "Kafka broker topic metrics $1 per topic"
+
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(.+)><>Value'
+    name: kafka_broker_topic_metrics_$1
+    type: GAUGE
+    help: "Kafka broker topic metrics $1"
+
+  - pattern: 'java.lang<type=Memory><>(HeapMemoryUsage|NonHeapMemoryUsage)'
+    name: jvm_memory_$1
+    type: GAUGE
+    help: "JVM memory usage"
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionCount'
+    name: jvm_gc_collection_count
+    labels:
+      gc_collector: "$1"
+    type: COUNTER
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionTime'
+    name: jvm_gc_collection_time
+    labels:
+      gc_collector: "$1"
+    type: COUNTER
+
+  - pattern: 'java.lang<type=Threading><>(.+)'
+    name: jvm_thread_$1
+    type: GAUGE
+    help: "JVM thread $1"
+
+  - pattern: 'java.lang<type=OperatingSystem><>(.+)'
+    name: jvm_os_$1
+    type: GAUGE
+    help: "Operating System $1"

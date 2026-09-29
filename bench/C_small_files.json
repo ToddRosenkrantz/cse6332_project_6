@@ -1,0 +1,17 @@
+{
+  "name": "C_small_files",
+  "title": "Avenue C: storage layout and the small-files problem",
+  "question": "How do the trigger interval and file format change the number and size of files written to S3?",
+  "producers": {
+    "impl": "ck",
+    "threads": 2
+  },
+  "vary": "rate",
+  "steps": [
+    50,
+    50,
+    50
+  ],
+  "step_seconds": 60,
+  "warmup": 20
+}

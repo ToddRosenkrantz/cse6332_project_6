@@ -1,0 +1,17 @@
+{
+  "name": "baseline",
+  "title": "Baseline: characterize this machine (required for every report)",
+  "question": "What does a light, medium and heavier steady load look like on this machine with default settings?",
+  "producers": {
+    "impl": "ck",
+    "threads": 2
+  },
+  "vary": "rate",
+  "steps": [
+    5,
+    25,
+    50
+  ],
+  "step_seconds": 60,
+  "warmup": 20
+}

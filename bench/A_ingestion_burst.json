@@ -1,0 +1,19 @@
+{
+  "name": "A_ingestion_burst",
+  "title": "Avenue A: maximum throughput vs producer threads (burst mode)",
+  "question": "How does maximum ingestion throughput scale with the number of producer threads?",
+  "producers": {
+    "impl": "ck",
+    "threads": 1,
+    "burst": true
+  },
+  "vary": "threads",
+  "steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "step_seconds": 45,
+  "warmup": 10
+}

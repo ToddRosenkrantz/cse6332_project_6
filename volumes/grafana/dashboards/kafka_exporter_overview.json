@@ -1,0 +1,175 @@
+{
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "kafka_brokers",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Brokers in Cluster",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 16,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_topic_partition_current_offset[1m])) by (topic)",
+          "legendFormat": "{{topic}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Topic Partition Offsets",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "avg(kafka_topic_partition_in_sync_replica) by (topic)",
+          "legendFormat": "{{topic}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "In-Sync Replicas per Topic",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum(kafka_topic_partition_current_offset) by (topic)",
+          "legendFormat": "{{topic}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Total Messages per Topic",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 41,
+  "templating": {
+    "list": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "aetbs3rckegowe"
+        },
+        "label": "Instance",
+        "name": "instance",
+        "query": "label_values(kafka_brokers, instance)",
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "aetbs3rckegowe"
+        },
+        "label": "Topic",
+        "name": "topic",
+        "query": "label_values(kafka_topic_partition_current_offset, topic)",
+        "refresh": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Kafka Exporter Overview (Fixed)",
+  "uid": "kafka-exporter-overview",
+  "version": 1,
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "iconColor": "orange",
+        "name": "Experiments (bench / chaos)",
+        "target": {
+          "type": "tags",
+          "tags": [
+            "cse6332"
+          ],
+          "matchAny": true,
+          "limit": 200
+        }
+      }
+    ]
+  }
+}

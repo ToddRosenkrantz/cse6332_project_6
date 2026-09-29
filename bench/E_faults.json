@@ -1,0 +1,47 @@
+{
+  "name": "E_faults",
+  "title": "Avenue E: fault tolerance and exactly-once delivery",
+  "question": "Is any data lost or duplicated when components fail under load, and how long does recovery take?",
+  "producers": {
+    "impl": "ck",
+    "threads": 2,
+    "acks": "all",
+    "idempotence": "true"
+  },
+  "vary": "rate",
+  "steps": [
+    50,
+    50,
+    50,
+    50,
+    50
+  ],
+  "step_seconds": 60,
+  "warmup": 20,
+  "chaos": [
+    {
+      "step": 2,
+      "at": 15,
+      "action": "kill-consumer",
+      "target": "json",
+      "seconds": 10
+    },
+    {
+      "step": 3,
+      "at": 15,
+      "action": "pause-kafka",
+      "seconds": 20
+    },
+    {
+      "step": 4,
+      "at": 15,
+      "action": "restart-s3"
+    },
+    {
+      "step": 5,
+      "at": 10,
+      "action": "stop-worker",
+      "seconds": 15
+    }
+  ]
+}

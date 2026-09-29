@@ -1,0 +1,11 @@
+# Host-side tools only (Spark jobs run inside containers).
+# Kafka producers
+kafka-python>=3.0,<4
+confluent-kafka>=2.6,<3
+
+# Monitoring & metrics
+prometheus-client>=0.19
+
+# Process management (producer start/stop) and S3 listing
+psutil>=5.9
+boto3>=1.34

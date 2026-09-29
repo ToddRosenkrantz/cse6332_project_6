@@ -1,0 +1,336 @@
+{
+  "uid": "containers-cadvisor",
+  "title": "Containers (cAdvisor)",
+  "description": "Per-container resources from cAdvisor. On Docker Desktop (Windows/macOS/WSL) containers appear by the 12-character id shown by `python setup.py ps`; with cAdvisor disabled these panels show no data.",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "tags": [
+    "cse6332"
+  ],
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "iconColor": "orange",
+        "name": "Experiments (bench / chaos)",
+        "target": {
+          "type": "tags",
+          "tags": [
+            "cse6332"
+          ],
+          "matchAny": true,
+          "limit": 200
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU per container (cores)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "expr": "label_replace(label_replace(rate(container_cpu_usage_seconds_total{id=~\"/docker/.+|/system.slice/docker-.+\"}[$__rate_interval]), \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Memory working set per container",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "expr": "label_replace(label_replace(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"}, \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Memory RSS per container",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "expr": "label_replace(label_replace(container_memory_rss{id=~\"/docker/.+|/system.slice/docker-.+\"}, \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Memory used vs limit (containers with a mem_limit)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "expr": "label_replace(label_replace(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"} / (container_spec_memory_limit_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"} > 0 < 1e15), \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Spark consumers and cAdvisor have limits from .env / docker-compose.yaml; near 100% means the container will be OOM-killed."
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Docker VM / host memory in use",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "expr": "container_memory_working_set_bytes{id=\"/\"}",
+          "legendFormat": "host",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Containers reporting",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "expr": "count(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"})",
+          "legendFormat": "containers",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    }
+  ]
+}

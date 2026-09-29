@@ -1,0 +1,282 @@
+{
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 44,
+      "targets": [
+        {
+          "expr": "kafka_brokers",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Kafka Brokers Up",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 42,
+      "targets": [
+        {
+          "expr": "count(count by (topic) (kafka_topic_partition_current_offset))",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Total Topics",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 43,
+      "targets": [
+        {
+          "expr": "count(kafka_topic_partition_current_offset)",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Total Partitions",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "id": 23,
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_topic_partition_current_offset[1m])) by (topic)",
+          "legendFormat": "{{topic}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Messages In per Second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "id": 41,
+      "targets": [
+        {
+          "expr": "sum by (sink) ({__name__=~\"metrics_.*_driver_spark_streaming_.*_processingRate_total_Value\"})",
+          "legendFormat": "{{sink}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Rows Consumed per Second (Spark, by sink)",
+      "type": "timeseries",
+      "description": "Spark Structured Streaming tracks offsets in its checkpoint, not in a Kafka consumer group, so consumption is read from the Spark driver metrics."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "max by (sink) ({__name__=~\"metrics_.*_driver_spark_streaming_.*_latency_Value\"})",
+          "legendFormat": "{{sink}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Spark Micro-batch Latency (ms, by sink)",
+      "type": "timeseries",
+      "description": "Duration of the last micro-batch per Spark sink; rising latency means the consumer is falling behind."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "avg(kafka_topic_partition_in_sync_replica) by (topic)",
+          "legendFormat": "{{topic}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "In-Sync Replicas per Topic",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "id": 29,
+      "targets": [
+        {
+          "expr": "sum by (area) (jvm_memory_used_bytes{job=\"kafka-jmx\"})",
+          "legendFormat": "{{area}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Broker JVM Memory Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 40,
+      "targets": [
+        {
+          "expr": "sum(kafka_topic_partitions) by (topic)",
+          "legendFormat": "{{topic}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          }
+        }
+      ],
+      "title": "Partitions per Topic",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 41,
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Kafka Cluster Overview",
+  "uid": "kafka-cluster-overview",
+  "version": 1,
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "iconColor": "orange",
+        "name": "Experiments (bench / chaos)",
+        "target": {
+          "type": "tags",
+          "tags": [
+            "cse6332"
+          ],
+          "matchAny": true,
+          "limit": 200
+        }
+      }
+    ]
+  }
+}

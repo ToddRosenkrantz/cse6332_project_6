@@ -1,0 +1,443 @@
+# Kafka (KRaft) -> Spark Structured Streaming -> S3 (SeaweedFS)
+# monitored by Prometheus + Grafana (+ cAdvisor, on by default).
+#
+# Every credential, port and image tag comes from .env - edit that file,
+# not this one. Drive the stack with:  python setup.py <command>
+# (plain `docker compose up -d` also works).
+
+# Fixed project name: container, network and volume names (cse6332_kafka_data, ...)
+# stay the same whatever this folder is called, so data survives a rename or move.
+name: cse6332
+
+x-spark-common: &spark-common
+  image: ${SPARK_IMAGE}
+  restart: unless-stopped
+  networks: [sparknet]
+  environment: &spark-env
+    TZ: ${TZ}
+    HOME: /opt/spark/work-dir
+    SPARK_DAEMON_JAVA_OPTS: -Dspark.metrics.conf=/opt/spark/conf/metrics.properties
+  volumes: &spark-volumes
+    - ./volumes/jars:/opt/spark/custom-jars:ro
+    - ./jobs:/opt/spark/jobs:ro
+    - ./volumes/spark-metrics/metrics.properties:/opt/spark/conf/metrics.properties:ro
+
+x-spark-consumer: &spark-consumer
+  <<: *spark-common
+  mem_limit: ${SPARK_CONSUMER_MEM_LIMIT}
+  depends_on:
+    spark-master: {condition: service_started}
+    kafka-init: {condition: service_completed_successfully}
+    s3-init: {condition: service_completed_successfully}
+  environment:
+    <<: *spark-env
+    KAFKA_BOOTSTRAP: kafka:29092
+    S3_ENDPOINT: http://seaweedfs:8333
+    S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+    S3_SECRET_KEY: ${S3_SECRET_KEY}
+    S3_BUCKET: ${S3_BUCKET}
+    CHECKPOINT_ROOT: /opt/spark/work-dir/checkpoints
+    SPARK_TRIGGER_INTERVAL: ${SPARK_TRIGGER_INTERVAL}
+    SPARK_MAX_OFFSETS_PER_TRIGGER: ${SPARK_MAX_OFFSETS_PER_TRIGGER}
+  volumes:
+    - ./volumes/jars:/opt/spark/custom-jars:ro
+    - ./jobs:/opt/spark/jobs:ro
+    - ./volumes/spark-metrics/metrics.properties:/opt/spark/conf/metrics.properties:ro
+    - spark_checkpoints:/opt/spark/work-dir
+
+services:
+  # ------------------------------------------------------------------ Kafka
+  kafka:
+    image: ${KAFKA_IMAGE}
+    container_name: kafka
+    restart: unless-stopped
+    networks: [sparknet]
+    ports:
+      - "${KAFKA_PORT}:9092"
+      # LAN listener for Kafka clients on other machines (set KAFKA_LAN_HOST in .env)
+      - "${KAFKA_LAN_PORT}:9094"
+      - "${KAFKA_JMX_PORT}:7071"
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # INTERNAL: containers   EXTERNAL: clients on this machine   LAN: clients on other machines
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,LAN://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://127.0.0.1:${KAFKA_PORT},LAN://${KAFKA_LAN_HOST}:${KAFKA_LAN_PORT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,LAN:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+      # JMX -> Prometheus agent on :7071 (rules in volumes/jmx/kafka-jmx-config.yml)
+      KAFKA_OPTS: -javaagent:/jmx/jmx_prometheus_javaagent-1.0.1.jar=7071:/jmx/kafka-jmx-config.yml
+      TZ: ${TZ}
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ./volumes/jmx:/jmx:ro
+    # the image declares these as volumes; tmpfs stops Docker leaving unnamed volumes behind
+    tmpfs:
+      - /etc/kafka/secrets
+      - /mnt/shared/config
+    healthcheck:
+      # KAFKA_OPTS is cleared so the CLI's JVM does not try to bind the JMX port again
+      test: ["CMD-SHELL", "KAFKA_OPTS= /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:29092 --list >/dev/null"]
+      interval: 10s
+      timeout: 20s
+      retries: 12
+      start_period: 20s
+
+  # One-shot: create topics (replaces create_kafka_topic.sh)
+  kafka-init:
+    image: ${KAFKA_IMAGE}
+    container_name: kafka-init
+    networks: [sparknet]
+    depends_on:
+      kafka: {condition: service_healthy}
+    tmpfs:
+      - /etc/kafka/secrets
+      - /mnt/shared/config
+      - /var/lib/kafka/data
+    environment:
+      KAFKA_OPTS: ""
+      KAFKA_TOPICS: ${KAFKA_TOPICS}
+      KAFKA_PARTITIONS: ${KAFKA_PARTITIONS}
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        for t in $${KAFKA_TOPICS//,/ }; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --create --if-not-exists \
+            --topic "$$t" --partitions "$$KAFKA_PARTITIONS" --replication-factor 1
+        done
+        echo "Topics:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list
+    restart: "no"
+
+  kafka-exporter:
+    image: ${KAFKA_EXPORTER_IMAGE}
+    container_name: kafka-exporter
+    restart: unless-stopped
+    networks: [sparknet]
+    depends_on:
+      kafka: {condition: service_healthy}
+    command: ["--kafka.server=kafka:29092"]
+    ports:
+      - "${KAFKA_EXPORTER_PORT}:9308"
+    environment:
+      TZ: ${TZ}
+
+  # --------------------------------------------------------- S3: SeaweedFS
+  seaweedfs:
+    image: ${SEAWEEDFS_IMAGE}
+    container_name: seaweedfs
+    restart: unless-stopped
+    networks: [sparknet]
+    command:
+      - server
+      - -ip=seaweedfs
+      - -ip.bind=0.0.0.0
+      - -filer
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -metricsPort=9327
+    ports:
+      - "${S3_PORT}:8333"
+      - "${SEAWEED_MASTER_PORT}:9333"
+      - "${SEAWEED_FILER_PORT}:8888"
+      - "${SEAWEED_METRICS_PORT}:9327"
+      # volume server status page (container 8080; host 8080 is the Spark master)
+      - "${SEAWEED_VOLUME_PORT}:8080"
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - seaweedfs_data:/data
+      # rendered from .env by `python setup.py install` (or `setup.py render`)
+      - ./volumes/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status && wget -q -O /dev/null http://127.0.0.1:8888/ && wget -q -S -O /dev/null http://127.0.0.1:8333/ 2>&1 | grep -q 'HTTP/'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
+
+  # SeaweedFS web admin console: buckets, S3 users/keys,
+  # policies, topology, file browser, maintenance. Login from .env.
+  seaweedfs-admin:
+    image: ${SEAWEEDFS_IMAGE}
+    container_name: seaweedfs-admin
+    restart: unless-stopped
+    networks: [sparknet]
+    depends_on:
+      seaweedfs: {condition: service_healthy}
+    command:
+      - admin
+      - -ip=0.0.0.0
+      - -port=23646
+      - -master=seaweedfs:9333
+      - -dataDir=/data
+      - -adminUser=${SEAWEED_ADMIN_USER}
+      - -adminPassword=${SEAWEED_ADMIN_PASSWORD}
+    ports:
+      - "${SEAWEED_ADMIN_PORT}:23646"
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - seaweedfs_admin:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:23646/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # One-shot: create the S3 bucket with the SeaweedFS shell (no host tools needed)
+  s3-init:
+    image: ${SEAWEEDFS_IMAGE}
+    container_name: s3-init
+    networks: [sparknet]
+    depends_on:
+      seaweedfs: {condition: service_healthy}
+    tmpfs:
+      - /data   # image-declared volume; tmpfs avoids a leftover unnamed volume
+    environment:
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        if echo "s3.bucket.list" | weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 2>/dev/null | grep -qw "$$S3_BUCKET"; then
+          echo "Bucket '$$S3_BUCKET' already exists"
+        else
+          echo "s3.bucket.create -name $$S3_BUCKET" | weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888
+          echo "Bucket '$$S3_BUCKET' created"
+        fi
+        echo "s3.bucket.list" | weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888
+    restart: "no"
+
+  # ------------------------------------------------------------------ Spark
+  spark-master:
+    <<: *spark-common
+    container_name: spark-master
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.master.Master
+      - --host
+      - spark-master
+      - --port
+      - "7077"
+      - --webui-port
+      - "8080"
+    ports:
+      - "${SPARK_MASTER_PORT}:7077"
+      - "${SPARK_MASTER_UI_PORT}:8080"
+
+  spark-worker:
+    <<: *spark-common
+    container_name: spark-worker
+    # CPU cap for the executors ("instance size"); 0 = unlimited. Set with: setup.py spark --worker-cpus 1
+    cpus: ${SPARK_WORKER_CPUS}
+    depends_on: [spark-master]
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.worker.Worker
+      - --host
+      - spark-worker
+      - --cores
+      - "${SPARK_WORKER_CORES}"
+      - --memory
+      - "${SPARK_WORKER_MEMORY}"
+      - --webui-port
+      - "8081"
+      - spark://spark-master:7077
+    ports:
+      - "${SPARK_WORKER_UI_PORT}:8081"
+
+  # One Spark application per sink, like independent jobs on a shared
+  # cloud cluster (EMR / Dataproc / Spark-on-K8s).
+  spark-consumer-json:
+    <<: *spark-consumer
+    container_name: spark-consumer-json
+    ports:
+      - "${SPARK_JSON_UI_PORT}:4040"
+    command:
+      - /opt/spark/bin/spark-submit
+      - --master
+      - spark://spark-master:7077
+      - --deploy-mode
+      - client
+      - --jars
+      - /opt/spark/custom-jars/*
+      - --conf
+      - spark.driver.host=spark-consumer-json
+      - --conf
+      - spark.driver.bindAddress=0.0.0.0
+      - --conf
+      - spark.driver.memory=${SPARK_DRIVER_MEMORY}
+      - --conf
+      - spark.executor.memory=${SPARK_EXECUTOR_MEMORY}
+      - --conf
+      - spark.executor.cores=1
+      - --conf
+      - spark.cores.max=${SPARK_APP_CORES}
+      - --conf
+      - spark.default.parallelism=4
+      - --conf
+      - spark.sql.shuffle.partitions=4
+      - --conf
+      - spark.sql.session.timeZone=${TZ}
+      - --conf
+      - spark.metrics.conf=/opt/spark/conf/metrics.properties
+      - --conf
+      - spark.ui.prometheus.enabled=true
+      - --conf
+      - spark.sql.streaming.metricsEnabled=true
+      - --conf
+      # keep batch records (tiny local files) so `audit` can time every micro-batch
+      - spark.sql.streaming.minBatchesToRetain=20000
+      - --conf
+      # stable metric names (app name, not the per-run app id); $$ escapes compose
+      - spark.metrics.namespace=$${spark.app.name}
+      - /opt/spark/jobs/kafka_json_consumer.py
+
+  spark-consumer-parquet:
+    <<: *spark-consumer
+    container_name: spark-consumer-parquet
+    ports:
+      - "${SPARK_PARQUET_UI_PORT}:4040"
+    command:
+      - /opt/spark/bin/spark-submit
+      - --master
+      - spark://spark-master:7077
+      - --deploy-mode
+      - client
+      - --jars
+      - /opt/spark/custom-jars/*
+      - --conf
+      - spark.driver.host=spark-consumer-parquet
+      - --conf
+      - spark.driver.bindAddress=0.0.0.0
+      - --conf
+      - spark.driver.memory=${SPARK_DRIVER_MEMORY}
+      - --conf
+      - spark.executor.memory=${SPARK_EXECUTOR_MEMORY}
+      - --conf
+      - spark.executor.cores=1
+      - --conf
+      - spark.cores.max=${SPARK_APP_CORES}
+      - --conf
+      - spark.default.parallelism=4
+      - --conf
+      - spark.sql.shuffle.partitions=4
+      - --conf
+      - spark.sql.session.timeZone=${TZ}
+      - --conf
+      - spark.metrics.conf=/opt/spark/conf/metrics.properties
+      - --conf
+      - spark.ui.prometheus.enabled=true
+      - --conf
+      - spark.sql.streaming.metricsEnabled=true
+      - --conf
+      # keep batch records (tiny local files) so `audit` can time every micro-batch
+      - spark.sql.streaming.minBatchesToRetain=20000
+      - --conf
+      # stable metric names (app name, not the per-run app id); $$ escapes compose
+      - spark.metrics.namespace=$${spark.app.name}
+      - /opt/spark/jobs/kafka_parquet_consumer.py
+
+  # ------------------------------------------------------------- Monitoring
+  prometheus:
+    image: ${PROMETHEUS_IMAGE}
+    container_name: prometheus
+    restart: unless-stopped
+    networks: [sparknet]
+    # lets Prometheus reach the host-run producers on native Linux too
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    container_name: grafana
+    restart: unless-stopped
+    networks: [sparknet]
+    depends_on: [prometheus]
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # anonymous read-only viewing (on by default); GRAFANA_ANONYMOUS_ACCESS=false requires a login to view
+      GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS_ACCESS}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      TZ: ${TZ}
+    volumes:
+      # fresh grafana.db lives in this named volume; dashboards are provisioned
+      - grafana_data:/var/lib/grafana
+      - ./volumes/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./volumes/grafana/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./volumes/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # On by default. Disable with `python setup.py up --no-cadvisor`
+  # or CADVISOR_ENABLED=false in .env. Nothing depends on it.
+  cadvisor:
+    image: ${CADVISOR_IMAGE}
+    container_name: cadvisor
+    restart: unless-stopped
+    networks: [sparknet]
+    privileged: true
+    mem_limit: 256m
+    cpus: 0.5
+    command:
+      - --housekeeping_interval=10s
+      - --docker_only=true
+      # Docker 29's containerd image store hides container names from cAdvisor
+      # on Docker Desktop (google/cadvisor#3910); still collect per-container
+      # cgroups (cgroupfs and systemd layouts), labelled by container id.
+      - --raw_cgroup_prefix_whitelist=/docker/,/system.slice/docker-
+      - --store_container_labels=false
+      - --disable_metrics=percpu,sched,tcp,udp,disk,diskIO,hugetlb,referenced_memory,cpu_topology,resctrl,process
+    ports:
+      - "${CADVISOR_PORT}:8080"
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+volumes:
+  kafka_data:
+  seaweedfs_data:
+  seaweedfs_admin:
+  spark_checkpoints:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  sparknet:

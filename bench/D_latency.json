@@ -1,0 +1,19 @@
+{
+  "name": "D_latency",
+  "title": "Avenue D: latency vs throughput",
+  "question": "How does end-to-end latency (event to file in S3) grow with load and batching?",
+  "producers": {
+    "impl": "ck",
+    "threads": 2
+  },
+  "vary": "rate",
+  "steps": [
+    10,
+    50,
+    100,
+    200,
+    400
+  ],
+  "step_seconds": 60,
+  "warmup": 20
+}

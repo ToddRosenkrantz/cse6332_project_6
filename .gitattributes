@@ -1,0 +1,8 @@
+# Files mounted into Linux containers must keep LF endings on Windows checkouts
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.jar binary
+*.png binary
+*.pdf binary
