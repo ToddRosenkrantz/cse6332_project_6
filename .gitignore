@@ -24,3 +24,8 @@ __pycache__/
 Thumbs.db
 
 retired/
+
+# Claude Code session transcripts: they hold every command output a session saw, so never commit them
+*.jsonl
+.claude/
+Claude_Session/
