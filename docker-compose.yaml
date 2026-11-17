@@ -17,6 +17,11 @@ x-spark-common: &spark-common
     TZ: ${TZ}
     HOME: /opt/spark/work-dir
     SPARK_DAEMON_JAVA_OPTS: -Dspark.metrics.conf=/opt/spark/conf/metrics.properties
+    # Host name Spark writes into its web UI links (master -> worker, app -> driver UI,
+    # executor logs). Container names and IPs are not reachable from the host's browser,
+    # so advertise the address the user browses to; each UI also listens on the same
+    # port inside and outside its container (see the ports below).
+    SPARK_PUBLIC_DNS: ${KAFKA_LAN_HOST:-127.0.0.1}
   volumes: &spark-volumes
     - ./volumes/jars:/opt/spark/custom-jars:ro
     - ./jobs:/opt/spark/jobs:ro
@@ -234,10 +239,11 @@ services:
       - --port
       - "7077"
       - --webui-port
-      - "8080"
+      - "${SPARK_MASTER_UI_PORT}"
     ports:
       - "${SPARK_MASTER_PORT}:7077"
-      - "${SPARK_MASTER_UI_PORT}:8080"
+      # same port inside and out, so UI links built from SPARK_PUBLIC_DNS work
+      - "${SPARK_MASTER_UI_PORT}:${SPARK_MASTER_UI_PORT}"
 
   spark-worker:
     <<: *spark-common
@@ -255,10 +261,10 @@ services:
       - --memory
       - "${SPARK_WORKER_MEMORY}"
       - --webui-port
-      - "8081"
+      - "${SPARK_WORKER_UI_PORT}"
       - spark://spark-master:7077
     ports:
-      - "${SPARK_WORKER_UI_PORT}:8081"
+      - "${SPARK_WORKER_UI_PORT}:${SPARK_WORKER_UI_PORT}"
 
   # One Spark application per sink, like independent jobs on a shared
   # cloud cluster (EMR / Dataproc / Spark-on-K8s).
@@ -266,7 +272,7 @@ services:
     <<: *spark-consumer
     container_name: spark-consumer-json
     ports:
-      - "${SPARK_JSON_UI_PORT}:4040"
+      - "${SPARK_JSON_UI_PORT}:${SPARK_JSON_UI_PORT}"
     command:
       - /opt/spark/bin/spark-submit
       - --master
@@ -275,6 +281,8 @@ services:
       - client
       - --jars
       - /opt/spark/custom-jars/*
+      - --conf
+      - spark.ui.port=${SPARK_JSON_UI_PORT}
       - --conf
       - spark.driver.host=spark-consumer-json
       - --conf
@@ -311,7 +319,7 @@ services:
     <<: *spark-consumer
     container_name: spark-consumer-parquet
     ports:
-      - "${SPARK_PARQUET_UI_PORT}:4040"
+      - "${SPARK_PARQUET_UI_PORT}:${SPARK_PARQUET_UI_PORT}"
     command:
       - /opt/spark/bin/spark-submit
       - --master
@@ -320,6 +328,8 @@ services:
       - client
       - --jars
       - /opt/spark/custom-jars/*
+      - --conf
+      - spark.ui.port=${SPARK_PARQUET_UI_PORT}
       - --conf
       - spark.driver.host=spark-consumer-parquet
       - --conf

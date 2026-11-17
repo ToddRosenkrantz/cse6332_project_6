@@ -50,6 +50,15 @@ LOG_DIR = ROOT / "logs"
 JARS_DIR = ROOT / "volumes" / "jars"
 JMX_DIR = ROOT / "volumes" / "jmx"
 S3_CONFIG = ROOT / "volumes" / "seaweedfs" / "s3.json"
+PROMETHEUS_CONFIG = ROOT / "prometheus.yml"
+# Prometheus scrape target host -> .env port. Each Spark UI listens on the same port inside
+# and outside its container, so Prometheus must scrape the port that .env sets.
+SPARK_UI_TARGETS = {
+    "spark-master": "SPARK_MASTER_UI_PORT",
+    "spark-worker": "SPARK_WORKER_UI_PORT",
+    "spark-consumer-json": "SPARK_JSON_UI_PORT",
+    "spark-consumer-parquet": "SPARK_PARQUET_UI_PORT",
+}
 DASHBOARD_DIR = ROOT / "volumes" / "grafana" / "dashboards"
 PROJECT_NAME = "cse6332"  # must match `name:` in docker-compose.yaml
 # Host files/folders bind-mounted (read-only) into containers
@@ -464,6 +473,33 @@ def render_s3_config():
         print(f"  📄 Rendered {S3_CONFIG.relative_to(ROOT)} from .env")
 
 
+def render_prometheus_targets():
+    """Prometheus cannot read .env, so write the Spark UI ports from .env into prometheus.yml.
+    Only the `'<host>:<port>'` targets of SPARK_UI_TARGETS change. The file is rewritten in place
+    (same inode), because Docker bind-mounts this single file. Returns True if it changed."""
+    import re
+
+    text = PROMETHEUS_CONFIG.read_text(encoding="utf-8")
+    new = text
+    for host, key in SPARK_UI_TARGETS.items():
+        port = env_int(key, 0)
+        if not port:
+            continue
+        new = re.sub(rf"'{re.escape(host)}:\d+'", f"'{host}:{port}'", new)
+    if new == text:
+        return False
+    with open(PROMETHEUS_CONFIG, "r+", encoding="utf-8", newline="") as f:
+        f.write(new)
+        f.truncate()
+    print(f"  📄 Updated the Spark scrape targets in {PROMETHEUS_CONFIG.name} from .env")
+    return True
+
+
+def render_configs(_args=None):
+    render_s3_config()
+    return render_prometheus_targets()
+
+
 def compose_services():
     result = run_command(compose("config", "--services"), capture=True, fatal=True)
     return [s for s in result.stdout.split() if s]
@@ -632,6 +668,7 @@ def up(args):
         print("❌ Spark/JMX jars are missing. Run: python setup.py install")
         sys.exit(1)
     render_s3_config()
+    render_prometheus_targets()
     fix_mount_permissions()
     check_container_conflicts()
 
@@ -641,6 +678,10 @@ def up(args):
         compose("up", "-d", "--wait", "--wait-timeout", "300", *core),
         "Starting core services and waiting for health checks / init jobs",
     )
+    # compose does not recreate Prometheus when prometheus.yml changes; SIGHUP makes it
+    # re-read the file (harmless when nothing changed)
+    run_command(["docker", "kill", "--signal", "HUP", "prometheus"], "Reloading the Prometheus configuration",
+                fatal=False, capture=True)
 
     if cadvisor_wanted(args):
         result = run_command(compose("up", "-d", "cadvisor"), "Starting cAdvisor", fatal=False)
@@ -730,7 +771,7 @@ def install(args):
     prune_stale_jars()
 
     print_banner("RENDERING CONFIGURATION")
-    render_s3_config()
+    render_configs()
 
     print_banner("LOCAL PYTHON DEPENDENCY INSTALLATION")
     run_command([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], "pip install -r requirements.txt")
@@ -1792,7 +1833,8 @@ def build_parser():
     sub.add_parser("monitor", help="topics, offsets, consumer logs, checkpoints, newest S3 objects").set_defaults(func=monitor)
     sub.add_parser("test", help="produce/consume one event on test-topic").set_defaults(func=smoke_test)
     sub.add_parser("doctor", help="check Docker, resources, ports and image architectures").set_defaults(func=doctor)
-    sub.add_parser("render", help="re-render volumes/seaweedfs/s3.json from .env").set_defaults(func=lambda a: render_s3_config())
+    sub.add_parser("render", help="re-render volumes/seaweedfs/s3.json and the Spark targets in prometheus.yml from .env"
+                   ).set_defaults(func=render_configs)
 
     p = sub.add_parser("submit", help="submit a job from ./jobs to the Spark cluster (foreground)")
     p.add_argument("job", nargs="?", default="jobs/kafka_consumer.py")

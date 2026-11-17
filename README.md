@@ -478,6 +478,12 @@ Kafka tells every client which address to reconnect to, so remote clients need a
 
 Clients on this machine keep using `127.0.0.1:9092`, and containers keep using `kafka:29092`. If the LAN IP changes, update `.env` and run `up` again.
 
+The same setting is the address Spark writes into its web UI links (`SPARK_PUBLIC_DNS`): links from the Spark master UI to the worker, to each application's UI and to executor logs point to `KAFKA_LAN_HOST`, so they work from other machines too. With the default `127.0.0.1` they work on this machine.
+
+### Changing the Spark UI ports
+
+Each Spark UI listens on the same port inside and outside its container, so its links work from your browser. If you change `SPARK_MASTER_UI_PORT`, `SPARK_WORKER_UI_PORT`, `SPARK_JSON_UI_PORT` or `SPARK_PARQUET_UI_PORT` in `.env`, run `python setup.py up`. It updates the matching Prometheus scrape targets in `prometheus.yml` and reloads Prometheus.
+
 ### Security before you open ports
 
 Opening the firewall exposes the stack to everyone on that network:

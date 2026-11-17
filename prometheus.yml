@@ -25,6 +25,9 @@ scrape_configs:
         labels: {cluster: 'cse6332'}
 
   # ---------------- Spark ----------------
+  # The four Spark UI ports below are rewritten from .env by `python setup.py up`
+  # (SPARK_MASTER_UI_PORT, SPARK_WORKER_UI_PORT, SPARK_JSON_UI_PORT, SPARK_PARQUET_UI_PORT):
+  # each Spark UI listens on the same port inside and outside its container.
   - job_name: 'spark-master'
     metrics_path: /metrics/prometheus
     static_configs:
@@ -38,25 +41,25 @@ scrape_configs:
   - job_name: 'spark-consumer-json-driver'
     metrics_path: /metrics/driver/prometheus
     static_configs:
-      - targets: ['spark-consumer-json:4040']
+      - targets: ['spark-consumer-json:4041']
         labels: {sink: 'json'}
 
   - job_name: 'spark-consumer-parquet-driver'
     metrics_path: /metrics/driver/prometheus
     static_configs:
-      - targets: ['spark-consumer-parquet:4040']
+      - targets: ['spark-consumer-parquet:4042']
         labels: {sink: 'parquet'}
 
   - job_name: 'spark-consumer-json-executors'
     metrics_path: /metrics/executors/prometheus
     static_configs:
-      - targets: ['spark-consumer-json:4040']
+      - targets: ['spark-consumer-json:4041']
         labels: {sink: 'json'}
 
   - job_name: 'spark-consumer-parquet-executors'
     metrics_path: /metrics/executors/prometheus
     static_configs:
-      - targets: ['spark-consumer-parquet:4040']
+      - targets: ['spark-consumer-parquet:4042']
         labels: {sink: 'parquet'}
 
   # ---------------- Containers ----------------
