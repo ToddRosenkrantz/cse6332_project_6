@@ -47,7 +47,7 @@ git clone https://github.com/ToddRosenkrantz/cse6332_project_6.git
 cd cse6332_project_6
 ```
 
-- **A specific release:** `git checkout v2.1.0` (list releases with `git tag`; return to the latest with `git switch main`).
+- **A specific release:** `git checkout v2.1.10` (list releases with `git tag`; return to the latest with `git switch main`).
 - **Update later:** `python setup.py shutdown`, then `git pull`, then `python setup.py install`. Your `.env` and your data are kept.
 - **The previous (v1) project:** `git checkout v1-final`.
 
@@ -55,7 +55,7 @@ cd cse6332_project_6
 
 1. **Download** one of these:
    - Latest version: https://github.com/ToddRosenkrantz/cse6332_project_6/archive/refs/heads/main.zip (on GitHub: green **Code** button → **Download ZIP**)
-   - A specific release: https://github.com/ToddRosenkrantz/cse6332_project_6/archive/refs/tags/v2.1.0.zip (on GitHub: **Tags** → pick a version → **zip**)
+   - A specific release: https://github.com/ToddRosenkrantz/cse6332_project_6/archive/refs/tags/v2.1.10.zip (on GitHub: **Tags** → pick a version → **zip**)
    - Or the ZIP file your instructor provides
 2. **Extract** it somewhere ordinary under your home folder, for example Documents. Don't run it from inside the ZIP preview, and on macOS keep it under your home folder so Docker Desktop can share it.
 
@@ -64,7 +64,7 @@ cd cse6332_project_6
    | Windows PowerShell | `Expand-Archive .\cse6332_project_6-main.zip -DestinationPath .` |
    | macOS / Linux | `unzip cse6332_project_6-main.zip` |
 
-3. **Enter the folder.** Its name depends on what you downloaded: `cse6332_project_6-main`, `cse6332_project_6-2.1.0`, or `cse6332_project_6` for the instructor's ZIP. The name doesn't matter, and you can rename it.
+3. **Enter the folder.** Its name depends on what you downloaded: `cse6332_project_6-main`, `cse6332_project_6-2.1.10`, or `cse6332_project_6` for the instructor's ZIP. The name doesn't matter, and you can rename it.
 
    ```
    cd cse6332_project_6-main
