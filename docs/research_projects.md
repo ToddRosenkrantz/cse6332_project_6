@@ -271,11 +271,13 @@ python setup.py audit
 
 | Part | Reader | Contents | Length |
 |---|---|---|---|
-| **Executive summary** | A manager who reads nothing else | Your answer in the first sentence; 2–4 bullets with your key numbers and what they mean (capacity, cost, risk); one clear recommendation. Plain language. | About half a page |
-| **Abstract** | A technical reader deciding whether to read on | Like a published article's abstract: the context and question; what you changed and how you measured it; the results with specific numbers; the conclusion and why it matters. | At most 3 paragraphs (about 150–300 words) |
+| **Executive summary** | A manager who reads nothing else | Your answer in the first sentence; 2–4 bullets with your key numbers and what they mean (capacity, cost, risk); one clear recommendation. Plain language. | 150–250 words (about half a page) |
+| **Abstract** | A technical reader deciding whether to read on | Like a published article's abstract: the context and question; what you changed and how you measured it; the results with specific numbers; the conclusion and why it matters. | 150–300 words, at most 3 paragraphs |
 | **Results ZIP** | Your instructor | The two `results/` folders (default and changed runs). Every number you report must come from them. | Two folders |
 
-[report_examples_and_rubric.md](report_examples_and_rubric.md) has a worked example of both documents and the **grading rubric**.
+Length is graded both ways: each document outside its word range loses 5 points. Submit in **Canvas** by **December 9, 2026 at 11:59:59 PM**; late work loses 10% per day.
+
+[report_examples_and_rubric.md](report_examples_and_rubric.md) has a worked example of both documents and a summary of the grading rubric; the full rubric is [rubric.md](../rubric.md).
 
 ## Tips
 

@@ -522,7 +522,8 @@ Steps and faults appear as markers on the Grafana dashboards.
 
 - [README.pdf](README.pdf): a printable copy of this README (the online version is always the most current)
 - [docs/research_projects.md](docs/research_projects.md): the capstone research avenues, commands, and what to submit
-- [docs/report_examples_and_rubric.md](docs/report_examples_and_rubric.md): example executive summary and abstract, and the grading rubric
+- [docs/report_examples_and_rubric.md](docs/report_examples_and_rubric.md): example executive summary and abstract, and a summary of the grading rubric
+- [rubric.md](rubric.md): the full grading rubric (scored items, partial credit, length limits, deductions, due date and late policy)
 - [docs/producers_dual_stack.md](docs/producers_dual_stack.md): running and comparing both producer implementations
 - [docs/producer_tuning.md](docs/producer_tuning.md): assignment framework for producer tuning experiments
 

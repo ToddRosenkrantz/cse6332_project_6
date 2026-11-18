@@ -683,8 +683,10 @@ def check_host_ports(cadvisor=True, fatal=True):
         print(f"  ❌ Port {port:<5} ({key}, {service}) is {reason}: {who}")
     if conflicts:
         ok = False
-        print("     Fix: stop that program, or choose a different port for that setting in .env")
-        print("     (e.g. GRAFANA_PORT=3001), then run this command again.")
+        print("     Fix: stop that program, or choose a different port for that setting in .env,")
+        port, key = next(((c[0], c[1]) for c in conflicts if c[1] != "?"), (conflicts[0][0], "<SETTING>"))
+        free = next((p for p in range(port + 1, min(port + 200, 65536)) if p not in wanted and not port_busy(p)), None)
+        print(f"     e.g. {key}={free or '<free port>'}, then run this command again.")
         if any("Windows" in c[3] for c in conflicts):
             print("     Windows reserves some port ranges for Hyper-V/WSL; list them with:")
             print("       netsh interface ipv4 show excludedportrange protocol=tcp")
@@ -706,8 +708,12 @@ def check_host_ports(cadvisor=True, fatal=True):
                   f"{process_on_port(port) or 'another program'}; that producer will fail to start")
 
     if ok:
-        extra = f", {ours} already held by this stack" if ours else ""
-        print(f"  ✅ All {len(wanted)} stack ports are available{extra}")
+        if ours == len(wanted):
+            print(f"  ✅ All {len(wanted)} stack ports are in use by this stack (it is running)")
+        elif ours:
+            print(f"  ✅ All {len(wanted)} stack ports OK: {ours} in use by this stack, {len(wanted) - ours} free")
+        else:
+            print(f"  ✅ All {len(wanted)} stack ports are free")
     elif fatal:
         print("\n❌ Pre-flight failed: port conflicts. Nothing was started.")
         print("   (To skip this check, add --skip-port-check.)")
