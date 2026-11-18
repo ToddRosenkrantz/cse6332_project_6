@@ -148,8 +148,9 @@ Run these checks once after installing (and whenever something seems wrong):
 | 6e | wait about one minute, then `python setup.py monitor` | Step 3 shows growing Kafka offsets; step 5 shows checkpoint micro-batches; step 6 shows JSON and Parquet files in S3 |
 | 6f | `python setup.py status` | Now the `kafka-producer-*` targets are ✅ too |
 | 6g | open http://localhost:3000 → **Dashboards → CSE 6332 Pipeline → Pipeline Overview** | Producer, Kafka, Spark and S3 graphs show data within a minute |
+| 6h | `python setup.py producers stop`, wait about a minute for the Spark sinks to write the last messages, then `python setup.py audit` | Both data-accounting lines are ✅ and it prints `PASS: every message in Kafka is stored exactly once`. If it prints `FAIL: counts differ`, the sinks are still catching up: wait another minute and run `audit` again |
 
-When you're done checking, stop the load with `python setup.py producers stop`.
+Step 6h leaves the producers stopped; start them again with `python setup.py producers start` when you need load.
 
 ### Step 7: Daily use (stop and start)
 
@@ -622,7 +623,7 @@ python setup.py logs <service> --tail 100   # why it is down (e.g. logs spark-co
 |---|---|---|
 | `monitor` step 5 says `No checkpoint yet`, or step 6 shows no files | The Spark consumers are still starting (up to a minute), or no producers are running | Wait a minute; check `producers status`; then `python setup.py logs spark-consumer-json` |
 | Kafka offsets grow but S3 files don't | A Spark consumer is failing or out of memory | `python setup.py logs spark-consumer-json`; check `python setup.py spark` settings; `python setup.py config --reset` restores the defaults |
-| `audit` reports **FAIL** | Messages still in flight, or data was deleted | Stop producers, wait until `monitor` shows the sinks caught up, run `audit` again |
+| `audit` reports **FAIL** | Messages still in flight, or data was deleted | Stop producers, wait about a minute for the sinks to catch up, then run `audit` again |
 | Spark settings changed and consumers are slow to start | A small `--worker-cpus` makes Spark start slowly (minutes) | Wait, or `python setup.py config --reset` |
 
 ### Logins and dashboards
