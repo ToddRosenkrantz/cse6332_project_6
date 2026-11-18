@@ -553,6 +553,168 @@ def host_arch():
     return "arm64" if machine in ("arm64", "aarch64") else "amd64"
 
 
+def stack_port_map(cadvisor=True):
+    """{host port: (service, .env key)} for every port docker-compose.yaml publishes."""
+    result = run_command(compose("config", "--format", "json"), capture=True, fatal=False)
+    try:
+        services = json.loads(result.stdout)["services"]
+    except (ValueError, KeyError):
+        services = {}
+    by_value = {}
+    for key in sorted(k for k in ENV if k.endswith("_PORT")):
+        by_value.setdefault(ENV[key], key)
+    ports = {}
+    for name, svc in services.items():
+        if name == "cadvisor" and not cadvisor:
+            continue
+        for entry in svc.get("ports") or []:
+            try:
+                port = int(entry.get("published"))
+            except (TypeError, ValueError):
+                continue
+            ports[port] = (name, by_value.get(str(port), "?"))
+    if not ports:  # compose unavailable: fall back to the *_PORT keys in .env
+        for key in sorted(k for k in ENV if k.endswith("_PORT")):
+            port = env_int(key, 0)
+            if port and (cadvisor or key != "CADVISOR_PORT"):
+                ports.setdefault(port, ("?", key))
+    return ports
+
+
+def _published_host_ports(port_field):
+    """Host ports from a `docker ps` Ports column, e.g. '0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp'."""
+    found = set()
+    for part in port_field.split(","):
+        left, sep, _ = part.strip().partition("->")
+        if sep:
+            host_part = left.rpartition(":")[2]
+            lo, _, hi = host_part.partition("-")
+            if lo.isdigit():
+                found.update(range(int(lo), int(hi or lo) + 1))
+    return found
+
+
+def docker_port_users():
+    """{host port: (container name, compose project)} for every running container."""
+    fmt = '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Ports}}'
+    result = run_command(["docker", "ps", "--format", fmt], capture=True, fatal=False)
+    users = {}
+    for line in (result.stdout or "").splitlines():
+        name, project, ports = (line.split("\t") + ["", ""])[:3]
+        for port in _published_host_ports(ports):
+            users[port] = (name, project)
+    return users
+
+
+def port_busy(port):
+    """Why `port` cannot be published on this host, or None if it is free.
+    Docker publishes on 0.0.0.0, so test a bind there as well as a connect to 127.0.0.1
+    (catches listeners on any interface and, on Windows, Hyper-V/WSL reserved port ranges)."""
+    if port_open("127.0.0.1", port, timeout=0.5):
+        return "in use"
+    for addr in ("0.0.0.0", "127.0.0.1"):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            if not IS_WINDOWS:  # ignore TIME_WAIT leftovers; still fails if something listens
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((addr, port))
+        except OSError as exc:
+            if IS_WINDOWS and getattr(exc, "winerror", None) == 10013:
+                return "reserved by Windows (excluded port range)"
+            if exc.errno in (13, getattr(socket, "EACCES", 13)):
+                return "permission denied"
+            return "in use"
+        finally:
+            sock.close()
+    return None
+
+
+def process_on_port(port):
+    """'name (PID n)' of the local process listening on `port`, if psutil can tell."""
+    try:
+        import psutil
+
+        for conn in psutil.net_connections(kind="tcp"):
+            if conn.laddr and conn.laddr.port == port and conn.status == psutil.CONN_LISTEN and conn.pid:
+                try:
+                    return f"{psutil.Process(conn.pid).name()} (PID {conn.pid})"
+                except psutil.Error:
+                    return f"PID {conn.pid}"
+    except Exception:  # psutil missing (before install) or access denied (macOS without sudo)
+        pass
+    return None
+
+
+def check_host_ports(cadvisor=True, fatal=True):
+    """Pre-flight: every host port the stack publishes (plus the producer metrics ports)
+    must be free, or already held by this stack. Returns True when clear."""
+    print_banner("PRE-FLIGHT: HOST PORTS")
+    wanted = stack_port_map(cadvisor)
+    docker_users = docker_port_users()
+    ok = True
+
+    dupes = {}
+    for key in (k for k in ENV if k.endswith("_PORT")):
+        if key == "CADVISOR_PORT" and not cadvisor:
+            continue
+        dupes.setdefault(env_int(key, 0), []).append(key)
+    for port, keys in sorted(dupes.items()):
+        if port and len(keys) > 1:
+            ok = False
+            print(f"  ❌ Port {port} is assigned to more than one setting in .env: {', '.join(sorted(keys))}")
+
+    conflicts = []
+    ours = 0
+    for port, (service, key) in sorted(wanted.items()):
+        user = docker_users.get(port)
+        if user and user[1] == PROJECT_NAME:
+            ours += 1  # already published by this stack: fine
+            continue
+        reason = port_busy(port)
+        if not reason:
+            continue
+        if user:
+            who = f"Docker container '{user[0]}'" + (f" (project '{user[1]}')" if user[1] else "")
+        else:
+            who = process_on_port(port) or "another program"
+        conflicts.append((port, key, service, reason, who))
+
+    for port, key, service, reason, who in conflicts:
+        print(f"  ❌ Port {port:<5} ({key}, {service}) is {reason}: {who}")
+    if conflicts:
+        ok = False
+        print("     Fix: stop that program, or choose a different port for that setting in .env")
+        print("     (e.g. GRAFANA_PORT=3001), then run this command again.")
+        if any("Windows" in c[3] for c in conflicts):
+            print("     Windows reserves some port ranges for Hyper-V/WSL; list them with:")
+            print("       netsh interface ipv4 show excludedportrange protocol=tcp")
+        if not IS_WINDOWS and any(c[4] == "another program" for c in conflicts):
+            print("     To see which program: sudo lsof -iTCP:<port> -sTCP:LISTEN")
+        elif IS_WINDOWS and any(c[4] == "another program" for c in conflicts):
+            print("     To see which program: netstat -ano | findstr :<port>   (last column is the PID)")
+
+    # Host-side producer metrics ports: only needed when producers start, so warn only.
+    for (impl, topic), port in sorted(PRODUCER_PORTS.items(), key=lambda kv: kv[1]):
+        try:
+            if live_process(f"{impl}_{topic}", PRODUCER_SCRIPTS[impl].name):
+                continue
+        except Exception:
+            pass
+        reason = port_busy(port)
+        if reason:
+            print(f"  ⚠️ Producer metrics port {port} ({impl} {topic}) is {reason}: "
+                  f"{process_on_port(port) or 'another program'}; that producer will fail to start")
+
+    if ok:
+        extra = f", {ours} already held by this stack" if ours else ""
+        print(f"  ✅ All {len(wanted)} stack ports are available{extra}")
+    elif fatal:
+        print("\n❌ Pre-flight failed: port conflicts. Nothing was started.")
+        print("   (To skip this check, add --skip-port-check.)")
+        sys.exit(1)
+    return ok
+
+
 def doctor(_args=None):
     check_prerequisites()
     ok = True
@@ -636,17 +798,8 @@ def doctor(_args=None):
     else:
         ok = False
 
-    print_banner("HOST PORTS")
-    running = container_state("kafka") == "running"
-    if running:
-        print("  ℹ️ Stack is running; skipping free-port check.")
-    else:
-        for key in sorted(k for k in ENV if k.endswith("_PORT")):
-            port = env_int(key, 0)
-            if port and port_open("127.0.0.1", port, timeout=0.5):
-                ok = False
-                print(f"  ❌ Port {port} ({key}) is already in use")
-        print("  ✅ Port check complete")
+    if not check_host_ports(cadvisor=env_bool("CADVISOR_ENABLED", True), fatal=False):
+        ok = False
 
     print("\n" + ("✅ Doctor: ready." if ok else "⚠️ Doctor: fix the items above."))
     return ok
@@ -671,6 +824,8 @@ def up(args):
     render_prometheus_targets()
     fix_mount_permissions()
     check_container_conflicts()
+    if not getattr(args, "skip_port_check", False):
+        check_host_ports(cadvisor=cadvisor_wanted(args))
 
     print_banner("STARTING CONTAINER STACK")
     core = [s for s in compose_services() if s != "cadvisor"]
@@ -760,6 +915,10 @@ def print_endpoints(cadvisor_on=True):
 def install(args):
     check_prerequisites()
     ensure_env_file()
+    check_container_conflicts()
+    if not args.skip_port_check:
+        check_host_ports(cadvisor=cadvisor_wanted(args))  # fail before the long downloads
+        args.skip_port_check = True  # up() need not repeat it
 
     print_banner("PROVISIONING DIRECTORIES")
     repair_mount_sources()
@@ -1806,11 +1965,13 @@ def build_parser():
 
     p = sub.add_parser("install", help="download jars, render config, pip install, start the stack")
     p.add_argument("--no-cadvisor", action="store_true", help="do not start cAdvisor")
+    p.add_argument("--skip-port-check", action="store_true", help="skip the pre-flight check for busy host ports")
     p.set_defaults(func=install)
 
     for name in ("up", "start"):
         p = sub.add_parser(name, help="start (or create) all containers and wait until healthy")
         p.add_argument("--no-cadvisor", action="store_true", help="do not start cAdvisor (saves memory/CPU)")
+        p.add_argument("--skip-port-check", action="store_true", help="skip the pre-flight check for busy host ports")
         p.set_defaults(func=up)
 
     sub.add_parser("shutdown", help="stop producers, then consumers, then all containers (data kept)").set_defaults(func=shutdown)

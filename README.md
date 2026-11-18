@@ -47,7 +47,7 @@ git clone https://github.com/ToddRosenkrantz/cse6332_project_6.git
 cd cse6332_project_6
 ```
 
-- **A specific release:** `git checkout v2.1.10` (list releases with `git tag`; return to the latest with `git switch main`).
+- **A specific release:** `git checkout v2.1.11` (list releases with `git tag`; return to the latest with `git switch main`).
 - **Update later:** `python setup.py shutdown`, then `git pull`, then `python setup.py install`. Your `.env` and your data are kept.
 - **The previous (v1) project:** `git checkout v1-final`.
 
@@ -55,7 +55,7 @@ cd cse6332_project_6
 
 1. **Download** one of these:
    - Latest version: https://github.com/ToddRosenkrantz/cse6332_project_6/archive/refs/heads/main.zip (on GitHub: green **Code** button → **Download ZIP**)
-   - A specific release: https://github.com/ToddRosenkrantz/cse6332_project_6/archive/refs/tags/v2.1.10.zip (on GitHub: **Tags** → pick a version → **zip**)
+   - A specific release: https://github.com/ToddRosenkrantz/cse6332_project_6/archive/refs/tags/v2.1.11.zip (on GitHub: **Tags** → pick a version → **zip**)
    - Or the ZIP file your instructor provides
 2. **Extract** it somewhere ordinary under your home folder, for example Documents. Don't run it from inside the ZIP preview, and on macOS keep it under your home folder so Docker Desktop can share it.
 
@@ -64,7 +64,7 @@ cd cse6332_project_6
    | Windows PowerShell | `Expand-Archive .\cse6332_project_6-main.zip -DestinationPath .` |
    | macOS / Linux | `unzip cse6332_project_6-main.zip` |
 
-3. **Enter the folder.** Its name depends on what you downloaded: `cse6332_project_6-main`, `cse6332_project_6-2.1.10`, or `cse6332_project_6` for the instructor's ZIP. The name doesn't matter, and you can rename it.
+3. **Enter the folder.** Its name depends on what you downloaded: `cse6332_project_6-main`, `cse6332_project_6-2.1.11`, or `cse6332_project_6` for the instructor's ZIP. The name doesn't matter, and you can rename it.
 
    ```
    cd cse6332_project_6-main
@@ -113,7 +113,7 @@ Use Git or the ZIP, as described in [Getting the project](#getting-the-project),
 python setup.py doctor
 ```
 
-`doctor` checks that Docker and Compose work, Docker's CPUs and memory, the Python packages, that every image has a build for your processor (Intel/AMD or ARM, including Apple Silicon), that the ports are free, and, on macOS, the folder location.
+`doctor` checks that Docker and Compose work, Docker's CPUs and memory, the Python packages, that every image has a build for your processor (Intel/AMD or ARM, including Apple Silicon), that every host port the stack needs is free (naming the program or container that holds a busy one, and on Windows detecting ports reserved by Hyper-V/WSL), and, on macOS, the folder location.
 
 **Verify:** there are no ❌ lines. Before the *first* install, `doctor` also warns about missing Python packages and ends with `⚠️ Doctor: fix the items above.`; that's expected, because `install` adds them. After installing, the last line is `✅ Doctor: ready.` Fix any ❌ lines (see [Troubleshooting](#troubleshooting)) and run `doctor` again.
 
@@ -126,11 +126,12 @@ python setup.py install
 This takes **5–15 minutes the first time** (mostly downloading Docker images). It:
 
 1. creates `.env` with **unique random passwords and S3 keys** (see [Credentials and security](#credentials-and-security))
-2. downloads the Spark and Kafka jars and the JMX agent into `volumes/` (~300 MB; files already present are skipped, so re-running resumes)
-3. installs the Python packages from `requirements.txt` into your venv
-4. starts all containers and waits until every one is healthy
-5. creates the Kafka topics (`topic-json`, `topic-parq`, `test-topic`) and the S3 bucket `spark-output`
-6. confirms that every Grafana dashboard loaded
+2. runs a **pre-flight port check** and stops before downloading anything if a port the stack needs is taken (`up` runs the same check; skip it with `--skip-port-check`)
+3. downloads the Spark and Kafka jars and the JMX agent into `volumes/` (~300 MB; files already present are skipped, so re-running resumes)
+4. installs the Python packages from `requirements.txt` into your venv
+5. starts all containers and waits until every one is healthy
+6. creates the Kafka topics (`topic-json`, `topic-parq`, `test-topic`) and the S3 bucket `spark-output`
+7. confirms that every Grafana dashboard loaded
 
 **Verify:** near the end you see `6/6 dashboards available at http://localhost:3000`, followed by the list of **System endpoints**. `install` is safe to run again at any time.
 
@@ -196,8 +197,8 @@ Open Grafana at http://localhost:3000 → **Dashboards → CSE 6332 Pipeline →
 
 | Command | Options | What it does and when to use it |
 |---|---|---|
-| `install` | `--no-cadvisor` | First-time setup: credentials, jars, Python packages, then `up`. Safe to re-run; it repairs a partial install |
-| `up` (alias `start`) | `--no-cadvisor` | Start or create all containers and wait until healthy; creates topics and bucket if needed. Use after `shutdown`, after changing `.env`, or after pulling a new version |
+| `install` | `--no-cadvisor`, `--skip-port-check` | First-time setup: credentials, jars, Python packages, then `up`. Safe to re-run; it repairs a partial install |
+| `up` (alias `start`) | `--no-cadvisor`, `--skip-port-check` | Start or create all containers and wait until healthy; creates topics and bucket if needed. Use after `shutdown`, after changing `.env`, or after pulling a new version |
 | `shutdown` (alias `stop`) | | Producers → consumers → containers, in that order, so no message is lost. **Data is kept** |
 | `down` | | Like `shutdown`, but also removes the containers (data volumes kept). `up` recreates them |
 | `restart` | `[service]` | Restart all containers, or one (e.g. `kafka`, `spark-consumer-parquet`, `grafana`) |
@@ -588,7 +589,8 @@ python setup.py logs <service> --tail 100   # why it is down (e.g. logs spark-co
 | `The virtual environment was not created successfully because ensurepip is not available` (Debian/Ubuntu) | `python3-venv` missing | `sudo apt install python3-venv` (or `python3.X-venv` for your version) |
 | `setup.py needs Python 3.9 or newer` | Old Python in the venv | Install a newer Python, delete the venv folder, create it again (Step 3) |
 | Downloads fail or stall during `install` | Network, proxy or firewall | Check your connection and run `install` again; finished downloads are kept, and partial ones are retried |
-| `doctor`: `Port NNNN (…_PORT) is already in use` | Another program uses that port (often another Grafana, Jupyter, or the old project) | Stop that program, or pick another port in `.env` (e.g. `GRAFANA_PORT=3001`) and run `up` |
+| `doctor`, `install` or `up`: `Port NNNN (…_PORT, service) is in use: …` | Another program or Docker container uses that port (often another Grafana, Jupyter, or the old project); the message names it when it can | Stop that program, or pick another port in `.env` (e.g. `GRAFANA_PORT=3001`) and run `up` |
+| `Port NNNN … is reserved by Windows (excluded port range)` | Hyper-V/WSL reserved a port range that includes it (check with `netsh interface ipv4 show excludedportrange protocol=tcp`) | Pick a port outside those ranges in `.env`, or run `net stop winnat` then `net start winnat` in an admin terminal to release the ranges |
 | `doctor`: `has no linux/arm64 build` | An image doesn't support your processor | Report it; all default images support Intel/AMD and ARM (Apple Silicon) |
 | macOS: `mounts denied` | The project is outside Docker Desktop's shared folders (`/Users`, `/Volumes`, `/private`, `/tmp`, `/var/folders`) | Move the project under your home folder, or add its folder in Docker Desktop → Settings → Resources → File sharing |
 
