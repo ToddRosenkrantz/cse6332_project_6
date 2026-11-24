@@ -17,6 +17,9 @@ x-spark-common: &spark-common
     TZ: ${TZ}
     HOME: /opt/spark/work-dir
     SPARK_DAEMON_JAVA_OPTS: -Dspark.metrics.conf=/opt/spark/conf/metrics.properties
+    # memory profile (python setup.py profile low|standard); executors inherit the worker's env
+    SPARK_DAEMON_MEMORY: ${SPARK_DAEMON_MEMORY:-1g}
+    MALLOC_ARENA_MAX: ${MALLOC_ARENA_MAX:-0}
     # Host name Spark writes into its web UI links (master -> worker, app -> driver UI,
     # executor logs). Container names and IPs are not reachable from the host's browser,
     # so advertise the address the user browses to; each UI also listens on the same
@@ -80,6 +83,7 @@ services:
       KAFKA_DELETE_TOPIC_ENABLE: "true"
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+      MALLOC_ARENA_MAX: ${MALLOC_ARENA_MAX:-0}
       # JMX -> Prometheus agent on :7071 (rules in volumes/jmx/kafka-jmx-config.yml)
       KAFKA_OPTS: -javaagent:/jmx/jmx_prometheus_javaagent-1.0.1.jar=7071:/jmx/kafka-jmx-config.yml
       TZ: ${TZ}
@@ -290,6 +294,11 @@ services:
       - --conf
       - spark.driver.memory=${SPARK_DRIVER_MEMORY}
       - --conf
+      # memory Spark sets aside in every driver/executor heap (bytes; Spark's default is 300 MB,
+      # which forces heaps >= 450 MB). The low profile lowers it to allow 256m heaps. Internal,
+      # undocumented Spark setting, stable since Spark 1.6.
+      - spark.testing.reservedMemory=${SPARK_RESERVED_MEMORY:-314572800}
+      - --conf
       - spark.executor.memory=${SPARK_EXECUTOR_MEMORY}
       - --conf
       - spark.executor.cores=1
@@ -336,6 +345,11 @@ services:
       - spark.driver.bindAddress=0.0.0.0
       - --conf
       - spark.driver.memory=${SPARK_DRIVER_MEMORY}
+      - --conf
+      # memory Spark sets aside in every driver/executor heap (bytes; Spark's default is 300 MB,
+      # which forces heaps >= 450 MB). The low profile lowers it to allow 256m heaps. Internal,
+      # undocumented Spark setting, stable since Spark 1.6.
+      - spark.testing.reservedMemory=${SPARK_RESERVED_MEMORY:-314572800}
       - --conf
       - spark.executor.memory=${SPARK_EXECUTOR_MEMORY}
       - --conf

@@ -255,8 +255,8 @@
       "gridPos": {
         "x": 0,
         "y": 16,
-        "w": 12,
-        "h": 6
+        "w": 6,
+        "h": 8
       },
       "targets": [
         {
@@ -271,7 +271,20 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes"
+          "unit": "bytes",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -289,6 +302,112 @@
       }
     },
     {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Docker VM memory over time",
+      "description": "VM total = everything in the Docker VM, including file cache the kernel frees when memory runs short and Docker's own processes. Sum of containers = what the stack itself uses. A container restart can briefly double-count while old and new containers overlap.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aetbs3rckegowe"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "refId": "A",
+          "legendFormat": "Docker VM total (incl. file cache)",
+          "expr": "container_memory_working_set_bytes{id=\"/\"}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "aetbs3rckegowe"
+          },
+          "refId": "B",
+          "legendFormat": "Sum of containers",
+          "expr": "sum(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"})"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "axisPlacement": "auto",
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Docker VM total (incl. file cache)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sum of containers"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "id": 6,
       "type": "stat",
       "title": "Containers reporting",
@@ -297,10 +416,10 @@
         "uid": "aetbs3rckegowe"
       },
       "gridPos": {
-        "x": 12,
+        "x": 18,
         "y": 16,
-        "w": 12,
-        "h": 6
+        "w": 6,
+        "h": 8
       },
       "targets": [
         {
@@ -315,7 +434,20 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },

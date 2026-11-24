@@ -757,8 +757,14 @@ def doctor(_args=None):
         if ncpu < max(worker_cores, 2):
             ok = False
             print(f"  ❌ Docker has {ncpu} CPUs; the Spark worker is configured for {worker_cores}")
-        if mem < 6 * 2**30:
-            print("  ⚠️ Less than 6 GiB RAM for Docker; consider `python setup.py up --no-cadvisor` or raise Docker Desktop's memory")
+        profile = current_profile()
+        print(f"  • Memory profile   : {profile} (python setup.py profile)")
+        if mem < int(4.5 * 2**30):
+            ok = False
+            print("  ❌ Less than 4.5 GiB RAM for Docker: the stack will not fit, even with `python setup.py profile low`.")
+            print("     Give Docker at least 5 GiB (Windows: memory=5GB in %UserProfile%\\.wslconfig).")
+        elif mem < 6 * 2**30 and profile != "low":
+            print("  ⚠️ Less than 6 GiB RAM for Docker: run `python setup.py profile low` (needs about 5 GiB)")
     except ValueError:
         print("  ⚠️ Could not read Docker CPU/memory")
 
@@ -1467,6 +1473,21 @@ TUNABLES = {
               "SPARK_WORKER_CPUS", "SPARK_WORKER_MEMORY", "SPARK_EXECUTOR_MEMORY", "SPARK_DRIVER_MEMORY", "SPARK_CONSUMER_MEM_LIMIT"],
     "Kafka": ["KAFKA_PARTITIONS", "KAFKA_HEAP_OPTS"],
     "Monitoring": ["CADVISOR_ENABLED", "GRAFANA_ANONYMOUS_ACCESS"],
+    "Memory": ["MALLOC_ARENA_MAX", "SPARK_DAEMON_MEMORY", "SPARK_RESERVED_MEMORY"],
+}
+# Memory profiles. "standard" is whatever .env.example ships; "low" fits Docker in about
+# 5 GiB (8 GB laptops). Measured sum of containers: standard ~5.0 GiB at the default load;
+# low under 4 GiB at the default load and 4.3 GiB peak at λ=50 for 12 minutes, with the same
+# latency and exactly-once results. The small messages need little heap, so low runs the
+# executors and drivers at 256m after lowering Spark's reserved memory (its default 300 MB
+# would require heaps of at least 450 MB).
+PROFILE_LOW = {
+    "KAFKA_HEAP_OPTS": "-Xmx256m -Xms256m",
+    "MALLOC_ARENA_MAX": "2",
+    "SPARK_DAEMON_MEMORY": "128m",
+    "SPARK_RESERVED_MEMORY": str(64 * 2**20),
+    "SPARK_EXECUTOR_MEMORY": "256m",
+    "SPARK_DRIVER_MEMORY": "256m",
 }
 SPARK_CONSUMER_SERVICES = list(CONSUMERS)
 
@@ -1569,6 +1590,15 @@ def spark_cmd(args):
         need = 2 * app_cores * exec_mb
         problems.append(f"worker memory ({merged['SPARK_WORKER_MEMORY']}) < 2 apps x {app_cores} executors x "
                         f"{merged['SPARK_EXECUTOR_MEMORY']} (use --worker-memory {max(1, -(-need // 1024))}g)")
+    try:
+        reserved_mb = int(ENV.get("SPARK_RESERVED_MEMORY") or 314572800) / 2**20
+    except ValueError:
+        reserved_mb = 300
+    for key, mb in (("SPARK_EXECUTOR_MEMORY", exec_mb), ("SPARK_DRIVER_MEMORY", driver_mb)):
+        if mb < 1.5 * reserved_mb:
+            problems.append(f"{key.split('_')[1].lower()} memory ({merged[key]}) is below Spark's minimum of "
+                            f"{-(-int(1.5 * reserved_mb) // 1)}m for the current memory profile"
+                            + ("" if current_profile() == "low" else " (`python setup.py profile low` allows 256m)"))
     if limit_mb < driver_mb + 256:
         problems.append(f"consumer memory limit ({merged['SPARK_CONSUMER_MEM_LIMIT']}) must exceed driver memory "
                         f"({merged['SPARK_DRIVER_MEMORY']}) by at least 256m")
@@ -1647,6 +1677,44 @@ def show_tunables(groups=None):
             mark = "" if value == default else f"   (default: {default or 'empty'})"
             shown = value if value else "(empty: Spark default)"
             print(f"    {key:<32} {shown}{mark}")
+
+
+def profile_values(name):
+    if name == "low":
+        return dict(PROFILE_LOW)
+    defaults = _env_lines(ENV_EXAMPLE)
+    return {k: defaults[k].split("=", 1)[1].strip() for k in PROFILE_LOW}
+
+
+def current_profile():
+    for name in ("standard", "low"):
+        if all(ENV.get(k, "") == v for k, v in profile_values(name).items()):
+            return name
+    return "custom"
+
+
+def profile_cmd(args):
+    ensure_env_file()
+    if args.name:
+        set_env_values(profile_values(args.name))
+        print_banner(f"MEMORY PROFILE: {args.name.upper()}")
+        for key, value in profile_values(args.name).items():
+            print(f"  • {key} = {value}")
+        if stack_running():
+            # compose recreates only the containers whose settings changed (Kafka, Spark);
+            # the Spark consumers resume from their checkpoints
+            run_command(compose("up", "-d", "--wait", "--wait-timeout", "300",
+                                *[s for s in compose_services() if s != "cadvisor"]),
+                        "Recreating Kafka and Spark with the new memory settings")
+        else:
+            print("  ℹ️ Stack is not running; the profile applies at the next `python setup.py up` (or install).")
+        return
+    print_banner(f"MEMORY PROFILE: {current_profile().upper()}")
+    for key in PROFILE_LOW:
+        print(f"    {key:<32} {ENV.get(key, '')}")
+    print("\n  standard: needs about 6 GiB for Docker (containers ~5 GiB under load)")
+    print("  low     : needs about 5 GiB for Docker (containers under 4 GiB; 4.3 GiB at λ=50), same latency")
+    print("  Change with: python setup.py profile low   |   python setup.py profile standard")
 
 
 def secrets_cmd(args):
@@ -2068,6 +2136,10 @@ def build_parser():
     p = sub.add_parser("secrets", help="show the generated credentials, or --rotate them (new random values)")
     p.add_argument("--rotate", action="store_true", help="generate new credentials and apply them to the running stack")
     p.set_defaults(func=secrets_cmd)
+
+    p = sub.add_parser("profile", help="show or set the memory profile: low (8 GB laptops) or standard")
+    p.add_argument("name", nargs="?", choices=["low", "standard"], help="profile to apply (omit to show the current one)")
+    p.set_defaults(func=profile_cmd)
 
     p = sub.add_parser("config", help="show all tuning settings, or --reset them to defaults")
     p.add_argument("--reset", action="store_true", help="restore defaults for tuning settings (not credentials)")

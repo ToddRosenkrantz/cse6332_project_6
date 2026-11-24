@@ -84,12 +84,12 @@ Follow these steps in order. Each step says how to check that it worked before y
 |---|---|---|---|
 | **Docker** with Compose v2 | `docker version` and `docker compose version` | Both print versions; `docker version` shows a *Server* section | Windows / macOS: [Docker Desktop](https://www.docker.com/products/docker-desktop/). Linux: [Docker Engine](https://docs.docker.com/engine/install/) |
 | **Python 3.9+** (3.11+ on Windows) | Linux/macOS: `python3 --version`<br>Windows: `python --version` | `Python 3.9` or newer | [python.org](https://www.python.org/downloads/) or your package manager |
-| **Resources for Docker** | Docker Desktop → Settings → Resources | ≥ 4 CPUs and ≥ 8 GB memory | The stack uses about 6 GB under load |
+| **Resources for Docker** | Docker Desktop → Settings → Resources | ≥ 4 CPUs and ≥ 6 GB memory (5 GB with the [low-memory profile](#computers-with-8-gb-of-ram)) | The containers use about 5 GB under load (about 4 GB with the low-memory profile) |
 | **Disk space** | | ≥ 5 GB free | Images (~3 GB), jars (~300 MB), data |
 
 Platform notes:
 
-- **Windows:** use Docker Desktop's WSL 2 backend. Docker's memory then comes from WSL, which by default gets half of your RAM. To change it, set `memory=8GB` under `[wsl2]` in `%UserProfile%\.wslconfig`, then run `wsl --shutdown`.
+- **Windows:** use Docker Desktop's WSL 2 backend. Docker's memory then comes from WSL, which by default gets half of your RAM. To change it, set `memory=8GB` under `[wsl2]` in `%UserProfile%\.wslconfig`, then run `wsl --shutdown`. On a computer with 8 GB of RAM, use `memory=5GB` and the [low-memory profile](#computers-with-8-gb-of-ram).
 - **Linux:** add yourself to the `docker` group so Docker works without `sudo`: `sudo usermod -aG docker $USER`, then log out and back in. On Debian/Ubuntu, also install `python3-venv` (`sudo apt install python3-venv`).
 - **macOS:** keep the project under your home folder, which Docker Desktop shares by default.
 - **Docker must be running** (Docker Desktop started) before every `setup.py` command.
@@ -116,6 +116,16 @@ python setup.py doctor
 `doctor` checks that Docker and Compose work, Docker's CPUs and memory, the Python packages, that every image has a build for your processor (Intel/AMD or ARM, including Apple Silicon), that every host port the stack needs is free (naming the program or container that holds a busy one, and on Windows detecting ports reserved by Hyper-V/WSL), and, on macOS, the folder location.
 
 **Verify:** there are no ❌ lines. Before the *first* install, `doctor` also warns about missing Python packages and ends with `⚠️ Doctor: fix the items above.`; that's expected, because `install` adds them. After installing, the last line is `✅ Doctor: ready.` Fix any ❌ lines (see [Troubleshooting](#troubleshooting)) and run `doctor` again.
+
+#### Computers with 8 GB of RAM
+
+Switch to the low-memory profile **before** installing:
+
+```
+python setup.py profile low
+```
+
+It shrinks the Kafka heap (256 MB), the Spark master/worker daemons (128 MB) and the Spark driver and executor heaps (256 MB, enough for this pipeline's small messages), and limits JVM native-memory growth (`MALLOC_ARENA_MAX=2`). At the default load the containers then use under 4 GB instead of about 5 GB, with the same latency and exactly-once results, so Docker needs about 5 GB. Heavy experiments use more: at λ=50 for 12 minutes the containers peaked at about 4.3 GB, so keep long heavy runs short. In this profile `python setup.py spark` still accepts larger driver/executor memory (anything from 96 MB up). That leaves about 3 GB for your operating system, a browser and the producers: close other large programs while the stack runs. Grafana's *Docker VM / host memory* panel reads 2–3 GB higher than the containers, because it also counts file cache that the system frees when memory runs short. `python setup.py profile standard` switches back, and `python setup.py profile` shows which one is active. You can switch at any time; a running stack restarts Kafka and Spark (the consumers resume from their checkpoints).
 
 ### Step 5: Install and start everything
 
@@ -233,6 +243,7 @@ Open Grafana at http://localhost:3000 → **Dashboards → CSE 6332 Pipeline →
 |---|---|---|
 | `secrets` | `[--rotate]` | Show your logins and S3 keys; `--rotate` replaces them all with new random values on the running stack |
 | `config` | `[--reset]` | Show every tuning setting; `--reset` restores the defaults (credentials and ports untouched) |
+| `profile` | `[low\|standard]` | Show or set the memory profile; `low` is for computers with 8 GB of RAM (see [Computers with 8 GB of RAM](#computers-with-8-gb-of-ram)) |
 | `spark` | `--trigger`, `--max-offsets`, `--cores`, `--worker-cores`, `--worker-cpus`, `--worker-memory`, `--executor-memory`, `--driver-memory`, `--consumer-memory` | Show or change Spark tuning. Values are validated, saved to `.env`, and the affected containers restart automatically |
 | `topics` | `[--partitions N] [--topic T]` | Show or increase Kafka topic partitions (Kafka can only increase them) |
 
@@ -601,7 +612,7 @@ python setup.py logs <service> --tail 100   # why it is down (e.g. logs spark-co
 | Problem | Cause | Fix |
 |---|---|---|
 | `Containers from another stack use the same names` | Another copy of the project, or the old `cse6332_project`, is running | Run the exact `docker compose down` or `docker rm -f …` command printed by `up` |
-| `up` times out waiting for a container, or a container keeps restarting | Usually not enough memory for Docker | `python setup.py logs <service>`; give Docker more memory (Step 1); try `python setup.py up --no-cadvisor` |
+| `up` times out waiting for a container, or a container keeps restarting | Usually not enough memory for Docker | `python setup.py logs <service>`; give Docker more memory (Step 1), or run `python setup.py profile low` |
 | `Spark/JMX jars are missing` | The jars were removed (e.g. by `clean`) | `python setup.py install` |
 | A folder named `volumes/seaweedfs/s3.json`, or root-owned folders under `volumes/` | `docker compose up` was run before `setup.py` | Just run `python setup.py up`; it repairs this automatically (no `sudo` needed) |
 | Container errors reading config files after editing them on Windows | The file was saved with Windows (CRLF) line endings | Save it with LF line endings (most editors show this in the status bar); `.gitattributes` keeps Git checkouts LF |
