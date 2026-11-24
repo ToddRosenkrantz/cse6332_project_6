@@ -66,6 +66,10 @@ scrape_configs:
   # Down (not an error) when cAdvisor is disabled.
   - job_name: 'cadvisor'
     scrape_interval: 10s
+    # cAdvisor stamps samples with its own time; Prometheus never marks such series stale,
+    # so a removed container kept showing its last value for 5 minutes (double counts after
+    # every restart). Scrape-time timestamps let a vanished container disappear at once.
+    honor_timestamps: false
     static_configs:
       - targets: ['cadvisor:8080']
 

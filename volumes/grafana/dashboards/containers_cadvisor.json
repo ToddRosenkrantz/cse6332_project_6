@@ -71,7 +71,7 @@
             "type": "prometheus",
             "uid": "aetbs3rckegowe"
           },
-          "expr": "label_replace(label_replace(rate(container_cpu_usage_seconds_total{id=~\"/docker/.+|/system.slice/docker-.+\"}[$__rate_interval]), \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "expr": "label_replace(label_replace(rate(container_cpu_usage_seconds_total{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"}[$__rate_interval]), \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
           "legendFormat": "{{container}}",
           "refId": "A"
         }
@@ -119,7 +119,7 @@
             "type": "prometheus",
             "uid": "aetbs3rckegowe"
           },
-          "expr": "label_replace(label_replace(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"}, \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "expr": "label_replace(label_replace(container_memory_working_set_bytes{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"}, \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
           "legendFormat": "{{container}}",
           "refId": "A"
         }
@@ -167,7 +167,7 @@
             "type": "prometheus",
             "uid": "aetbs3rckegowe"
           },
-          "expr": "label_replace(label_replace(container_memory_rss{id=~\"/docker/.+|/system.slice/docker-.+\"}, \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "expr": "label_replace(label_replace(container_memory_rss{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"}, \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
           "legendFormat": "{{container}}",
           "refId": "A"
         }
@@ -215,7 +215,7 @@
             "type": "prometheus",
             "uid": "aetbs3rckegowe"
           },
-          "expr": "label_replace(label_replace(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"} / (container_spec_memory_limit_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"} > 0 < 1e15), \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
+          "expr": "label_replace(label_replace(container_memory_working_set_bytes{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"} / (container_spec_memory_limit_bytes{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"} > 0 < 1e15), \"container\", \"$1\", \"id\", \".*docker[-/]([0-9a-f]{12}).*\"), \"container\", \"$1\", \"name\", \"(.+)\")",
           "legendFormat": "{{container}}",
           "refId": "A"
         }
@@ -333,7 +333,7 @@
           },
           "refId": "B",
           "legendFormat": "Sum of containers",
-          "expr": "sum(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"})"
+          "expr": "sum(container_memory_working_set_bytes{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"})"
         }
       ],
       "fieldConfig": {
@@ -427,7 +427,7 @@
             "type": "prometheus",
             "uid": "aetbs3rckegowe"
           },
-          "expr": "count(container_memory_working_set_bytes{id=~\"/docker/.+|/system.slice/docker-.+\"})",
+          "expr": "count(container_memory_working_set_bytes{id=~\"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope\"})",
           "legendFormat": "containers",
           "refId": "A"
         }

@@ -446,8 +446,8 @@ STEP_QUERIES = {
     "spark_batch_ms": ('max by (sink) ({__name__=~"metrics_.*_driver_spark_streaming_.*_latency_Value"})', "sink"),
 }
 CONTAINER_QUERIES = {
-    "cpu_cores": 'rate(container_cpu_usage_seconds_total{id=~"/docker/.+|/system.slice/docker-.+"}[30s])',
-    "mem_mib": 'container_memory_working_set_bytes{id=~"/docker/.+|/system.slice/docker-.+"} / 1048576',
+    "cpu_cores": 'rate(container_cpu_usage_seconds_total{id=~"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope"}[30s])',
+    "mem_mib": 'container_memory_working_set_bytes{id=~"/docker/[0-9a-f]{64}|/system.slice/docker-[0-9a-f]{64}.scope"} / 1048576',
 }
 TOPIC_TO_SINK = {topic: sink for sink, (topic, _, _) in SINKS.items()}
 
