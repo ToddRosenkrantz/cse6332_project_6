@@ -385,6 +385,13 @@ services:
     # lets Prometheus reach the host-run producers on native Linux too
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # The image's default arguments, plus a 30 s lookback (default 5 min): after a full
+    # `down`/`up`, Prometheus cannot mark the old containers' series as gone, so with 5 min
+    # dashboards counted every container twice for 5 minutes. Every job scrapes at <= 10 s.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --query.lookback-delta=30s
     ports:
       - "${PROMETHEUS_PORT}:9090"
     environment:
